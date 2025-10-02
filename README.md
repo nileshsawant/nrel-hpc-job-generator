@@ -1,6 +1,12 @@
 # NREL HPC Job Script Generator
 
-A web-based application for generating Slurm batch scripts for NREL High Performance Computing systems, specifically designed for the Kestrel supercomputer.
+A comprehensive solution for generating Slurm batch scripts for NREL High Performance Computing systems, specifically designed for the Kestrel supercomputer.
+
+## 🎯 Multiple Access Methods
+
+- **🌐 Web Interface**: User-friendly browser-based generator
+- **💻 Command Line Interface**: Direct CLI tool for use on Kestrel
+- **📱 Standalone HTML**: Offline-capable single-file version
 
 ## Features
 
@@ -20,20 +26,6 @@ A web-based application for generating Slurm batch scripts for NREL High Perform
 - Jobs with local scratch storage requirements
 
 ## 🚀 Quick Start
-
-### For Users (No Installation Required)
-
-**Option 1: GitHub Codespaces** (Recommended for NREL researchers)
-1. Visit the [GitHub repository](https://github.com/nileshsawant/nrel-hpc-job-generator)
-2. Click "Code" → "Create codespace on main"
-3. Wait for the environment to load
-4. In the terminal, run: `./start.sh`
-5. Click "Open in Browser" when prompted, or use the PORTS tab
-6. Use the web interface to generate job scripts!
-
-**Option 2: Live Web App**
-- Visit: `https://your-app-name.railway.app` (or Heroku/Render URL)
-- Start generating job scripts immediately!
 
 ### For Developers (Local Development)
 
@@ -59,14 +51,192 @@ A web-based application for generating Slurm batch scripts for NREL High Perform
    ```
 
 4. Open your web browser and navigate to:
-   ```
+   ```bash
    http://localhost:5000
    ```
 
 ### 📋 Ready to Deploy?
 See [`DEPLOYMENT_GUIDE.md`](DEPLOYMENT_GUIDE.md) for complete deployment instructions to various platforms.
 
-### Usage
+## 🖥️ Command Line Interface (CLI)
+
+For users working directly on Kestrel, we provide a powerful CLI tool that generates the same high-quality job scripts with full command-line control.
+
+### CLI Installation on Kestrel
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/nileshsawant/nrel-hpc-job-generator.git
+   cd nrel-hpc-job-generator
+   ```
+
+2. **Run the installer (optional):**
+   ```bash
+   ./install.sh
+   ```
+   This installs the tool to `~/bin/` and creates a `nrel-jobgen` command.
+
+3. **Or use directly:**
+   ```bash
+   python3 generate_job.py --help
+   ```
+
+### CLI Usage Examples
+
+#### Interactive Mode (Recommended for Beginners)
+```bash
+python3 generate_job.py --interactive
+```
+
+#### Command Line Examples
+
+**Basic job:**
+```bash
+python3 generate_job.py --account csc000 --time 01:00:00 --job-name my_job
+```
+
+**Multi-node job with specific resources:**
+```bash
+python3 generate_job.py \
+  --account csc000 \
+  --time 2:00:00 \
+  --job-name parallel_job \
+  --nodes 4 \
+  --ntasks 128 \
+  --ntasks-per-node 32 \
+  --partition standard
+```
+
+**GPU job:**
+```bash
+python3 generate_job.py \
+  --account csc000 \
+  --time 30 \
+  --partition debug \
+  --gpus 1 \
+  --job-name gpu_test \
+  --modules cuda/11.8 \
+  --commands "nvidia-smi" "python my_gpu_script.py"
+```
+
+**Save to file and submit:**
+```bash
+python3 generate_job.py \
+  --account csc000 \
+  --time 01:00:00 \
+  --job-name production_run \
+  --nodes 2 \
+  --ntasks 64 \
+  --memory 100GB \
+  --mail-user your.email@nrel.gov \
+  --modules "python/3.9" "gcc/8.4.0" \
+  --commands "python analysis.py" \
+  --save job_script.sh \
+  --submit
+```
+
+### CLI Command Reference
+
+#### Required Parameters
+- `--account, -A`: Your NREL project account (e.g., `csc000`)
+- `--time, -t`: Walltime in format `HH:MM:SS`, `D-HH:MM:SS`, or minutes
+
+#### Job Configuration
+- `--job-name, -J`: Name for your job
+- `--partition, -p`: Partition (debug, short, standard, long)
+- `--qos`: Quality of service (normal, high, standby)
+
+#### Resources
+- `--nodes, -N`: Number of compute nodes (default: 1)
+- `--ntasks, -n`: Total number of MPI tasks
+- `--ntasks-per-node`: Tasks per node
+- `--cpus-per-task, -c`: CPUs per task (for threading)
+- `--memory, --mem`: Memory per node (e.g., `50GB`)
+- `--memory-per-cpu`: Memory per CPU (e.g., `2GB`)
+- `--gpus, -G`: Number of GPUs
+- `--tmp`: Local scratch space (e.g., `100GB`)
+
+#### Output Options
+- `--save, -s`: Save script to specified file
+- `--submit`: Automatically submit the job (requires `--save`)
+
+### NREL Kestrel Specific Information
+
+#### Partitions and Time Limits
+- **debug**: 30 minutes max, for testing
+- **short**: 4 hours max, higher priority
+- **standard**: 24 hours max, normal queue
+- **long**: 48 hours max, for long runs
+
+#### Typical Node Configurations
+- **Standard compute**: 104 cores, ~250GB RAM per node
+- **GPU nodes**: Various GPU types available
+- **High memory**: Up to 1TB RAM on special nodes
+
+#### Account Format
+Your account handle typically starts with your organization code:
+- `csc###` for CSC projects
+- `bioE###` for EERE Bioenergy projects  
+- `h2###` for H2@Scale projects
+- etc.
+
+### CLI Advanced Examples
+
+#### Array Job
+```bash
+python3 generate_job.py \
+  --account csc000 \
+  --time 01:00:00 \
+  --job-name array_job \
+  --commands "python process_file_\$SLURM_ARRAY_TASK_ID.py" \
+  --save array_job.sh
+
+# Manually add array directive to the generated script
+echo "#SBATCH --array=1-10" >> array_job.sh
+```
+
+#### Batch Generation
+```bash
+# Create multiple similar jobs
+for i in {1..5}; do
+  python3 generate_job.py \
+    --account csc000 \
+    --time 01:00:00 \
+    --job-name "job_$i" \
+    --commands "python process_part_$i.py" \
+    --save "job_$i.sh"
+done
+```
+
+### CLI Tips for Kestrel Users
+
+1. **Check Your Account**: `sacctmgr show user $USER -s`
+2. **Monitor Job Progress**: `squeue -u $USER`
+3. **Check Job Details**: `scontrol show job <job_id>`
+4. **Cancel a Job**: `scancel <job_id>`
+5. **View Job History**: `sacct -u $USER`
+
+## 🌐 Web Interface Options
+
+### For NREL Users (Policy Compliant)
+
+**Option 1: Standalone HTML File** ⭐ **RECOMMENDED**
+1. Download `standalone.html` from this repository
+2. Open the file in any web browser (Chrome, Firefox, Safari)
+3. Generate job scripts entirely offline - no external servers needed!
+4. **Benefits:** NREL policy compliant, works offline, no data transmission
+
+**Option 2: Local Web Server**
+1. Follow the "For Developers" installation steps above
+2. Access at `http://localhost:5000` on your computer
+
+**Option 3: GitHub Codespaces** (if network allows)
+1. Visit the [GitHub repository](https://github.com/nileshsawant/nrel-hpc-job-generator)
+2. Click "Code" → "Create codespace on main"  
+3. Run: `./start-minimal.sh` (for better network reliability)
+4. Use the PORTS tab to access the web interface
+
+### Web Interface Usage
 
 1. **Fill out the form**: Enter your job requirements using the web interface
 2. **Review the script**: Generated script appears in real-time on the right panel
@@ -75,7 +245,7 @@ See [`DEPLOYMENT_GUIDE.md`](DEPLOYMENT_GUIDE.md) for complete deployment instruc
 
 ## Generated Script Features
 
-The generated scripts include:
+Both the CLI and web interface generate scripts with:
 
 - **Proper SBATCH directives** for resource allocation
 - **Job information logging** (job ID, nodes, timestamps)
@@ -92,31 +262,6 @@ The application includes example scripts for:
 - **GPU Job**: Single or multi-GPU resource allocation
 - **MPI Job**: Multi-node parallel computing setup
 
-## Configuration Options
-
-### Required Parameters
-- **Account**: Your NREL HPC project allocation
-- **Walltime**: Maximum job duration
-
-### Resource Requests
-- **Nodes**: Number of compute nodes
-- **Tasks**: Total number of MPI tasks
-- **CPUs per Task**: Threading configuration
-- **Memory**: RAM requirements (per node or per CPU)
-- **GPUs**: GPU resource allocation
-- **Local Storage**: Scratch space requirements
-
-### Job Management
-- **Partition**: Queue selection (debug, standard, long)
-- **QOS**: Priority level (normal, high, standby)
-- **Email Notifications**: Job status updates
-- **Output Files**: Stdout/stderr redirection
-
-### Environment Setup
-- **Modules**: Software environment loading
-- **Environment Variables**: Custom configuration
-- **Job Commands**: Your application execution
-
 ## Best Practices
 
 The generator incorporates NREL HPC best practices:
@@ -127,16 +272,35 @@ The generator incorporates NREL HPC best practices:
 - **Error Handling**: Robust job completion logging
 - **Documentation**: Clear script comments and headers
 
+## Troubleshooting
+
+### Common Issues
+
+1. **"Invalid account"**: Check your account with `sacctmgr show user $USER -s`
+2. **"Invalid partition"**: Use `sinfo` to see available partitions
+3. **"Job pending"**: Check queue status with `squeue` or `sinfo`
+4. **"Out of memory"**: Increase memory request or reduce resource usage
+
+### Getting Help
+
+1. **Check Kestrel documentation**: https://nrel.gov/hpc/kestrel/
+2. **Contact HPC support**: hpc-help@nrel.gov
+3. **View system status**: `sinfo -s`
+
 ## File Structure
 
 ```
-├── app.py                 # Flask application
+├── app.py                 # Flask web application
+├── generate_job.py        # CLI tool
+├── install.sh            # CLI installer
+├── demo.sh              # CLI demonstration
 ├── requirements.txt       # Python dependencies
 ├── templates/
 │   ├── base.html         # HTML template base
 │   ├── index.html        # Main generator interface
 │   └── examples.html     # Example scripts page
-└── README.md             # This file
+├── standalone.html       # Offline HTML version
+└── README.md            # This file
 ```
 
 ## Development
