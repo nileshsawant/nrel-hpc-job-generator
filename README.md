@@ -26,8 +26,10 @@ A web-based application for generating Slurm batch scripts for NREL High Perform
 **Option 1: GitHub Codespaces** (Recommended for NREL researchers)
 1. Visit the [GitHub repository](https://github.com/nileshsawant/nrel-hpc-job-generator)
 2. Click "Code" → "Create codespace on main"
-3. Wait for the environment to load (app starts automatically)
-4. Use the web interface to generate job scripts!
+3. Wait for the environment to load
+4. In the terminal, run: `./start.sh`
+5. Click "Open in Browser" when prompted, or use the PORTS tab
+6. Use the web interface to generate job scripts!
 
 **Option 2: Live Web App**
 - Visit: `https://your-app-name.railway.app` (or Heroku/Render URL)
