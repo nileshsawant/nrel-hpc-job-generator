@@ -1,0 +1,368 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-6">
+        <h1>NREL HPC Job Script Generator</h1>
+        <p class="lead">Generate Slurm batch scripts for the Kestrel supercomputer</p>
+        
+        <div class="alert alert-info">
+            <strong>Note:</strong> Always review generated scripts before submitting to the queue. 
+            Ensure your account, resource requests, and commands are appropriate for your workload.
+        </div>
+
+        <form id="jobForm">
+            <!-- Required Parameters -->
+            <div class="form-section">
+                <h4>Required Parameters</h4>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="account" class="form-label">Account/Project Handle *</label>
+                            <input type="text" class="form-control" id="account" name="account" 
+                                   placeholder="e.g., csc000" required>
+                            <div class="form-text">Your NREL HPC project allocation handle</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="walltime" class="form-label">Walltime *</label>
+                            <input type="text" class="form-control" id="walltime" name="walltime" 
+                                   placeholder="01:00:00" required>
+                            <div class="form-text">Format: HH:MM:SS or D-HH:MM:SS or minutes</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="job_name" class="form-label">Job Name</label>
+                            <input type="text" class="form-control" id="job_name" name="job_name" 
+                                   placeholder="my_job">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="partition" class="form-label">Partition</label>
+                            <select class="form-select" id="partition" name="partition">
+                                <option value="">Default</option>
+                                {% for part, info in partitions.items() %}
+                                <option value="{{ part }}">{{ part }} - {{ info.description }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="qos" class="form-label">Quality of Service</label>
+                    <select class="form-select" id="qos" name="qos">
+                        {% for qos, info in qos_options.items() %}
+                        <option value="{{ qos }}" {% if qos == 'normal' %}selected{% endif %}>
+                            {{ qos }} - {{ info.description }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Resource Requests -->
+            <div class="form-section">
+                <h4>Resource Requests</h4>
+                
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="nodes" class="form-label">Nodes</label>
+                            <input type="number" class="form-control" id="nodes" name="nodes" 
+                                   value="1" min="1">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="ntasks" class="form-label">Total Tasks</label>
+                            <input type="number" class="form-control" id="ntasks" name="ntasks" 
+                                   placeholder="Optional" min="1">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="ntasks_per_node" class="form-label">Tasks per Node</label>
+                            <input type="number" class="form-control" id="ntasks_per_node" name="ntasks_per_node" 
+                                   placeholder="Optional" min="1">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="cpus_per_task" class="form-label">CPUs per Task</label>
+                            <input type="number" class="form-control" id="cpus_per_task" name="cpus_per_task" 
+                                   placeholder="Optional" min="1">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="memory" class="form-label">Memory per Node</label>
+                            <input type="text" class="form-control" id="memory" name="memory" 
+                                   placeholder="e.g., 50GB">
+                            <div class="form-text">Format: number + GB/MB</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="memory_per_cpu" class="form-label">Memory per CPU</label>
+                            <input type="text" class="form-control" id="memory_per_cpu" name="memory_per_cpu" 
+                                   placeholder="e.g., 2GB">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="gpus" class="form-label">GPUs</label>
+                            <input type="number" class="form-control" id="gpus" name="gpus" 
+                                   placeholder="Optional" min="1">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="tmp_storage" class="form-label">Local Scratch Storage</label>
+                            <input type="text" class="form-control" id="tmp_storage" name="tmp_storage" 
+                                   placeholder="e.g., 100GB">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notifications -->
+            <div class="form-section">
+                <h4>Email Notifications</h4>
+                
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email Address</label>
+                    <input type="email" class="form-control" id="email" name="email" 
+                           placeholder="your.email@nrel.gov">
+                </div>
+                
+                <div class="mb-3">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" id="mail_begin" name="mail_begin">
+                        <label class="form-check-label" for="mail_begin">Job start</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" id="mail_end" name="mail_end">
+                        <label class="form-check-label" for="mail_end">Job end</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" id="mail_fail" name="mail_fail">
+                        <label class="form-check-label" for="mail_fail">Job failure</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Output Files -->
+            <div class="form-section">
+                <h4>Output Files</h4>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="output_file" class="form-label">Output File</label>
+                            <input type="text" class="form-control" id="output_file" name="output_file" 
+                                   value="slurm-%j.out">
+                            <div class="form-text">%j will be replaced with job ID</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="error_file" class="form-label">Error File</label>
+                            <input type="text" class="form-control" id="error_file" name="error_file" 
+                                   placeholder="Optional (defaults to output file)">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Job Setup -->
+            <div class="form-section">
+                <h4>Job Setup</h4>
+                
+                <div class="mb-3">
+                    <label for="modules" class="form-label">Modules to Load</label>
+                    <textarea class="form-control" id="modules" name="modules" rows="3" 
+                              placeholder="gcc/9.3.0&#10;openmpi/4.1.1&#10;python/3.9.0"></textarea>
+                    <div class="form-text">One module per line</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="environment_setup" class="form-label">Environment Setup</label>
+                    <textarea class="form-control" id="environment_setup" name="environment_setup" rows="3" 
+                              placeholder="export OMP_NUM_THREADS=1&#10;source activate my_env"></textarea>
+                    <div class="form-text">Environment variables, conda activation, etc.</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="commands" class="form-label">Job Commands</label>
+                    <textarea class="form-control" id="commands" name="commands" rows="5" 
+                              placeholder="srun ./my_program&#10;python my_script.py"></textarea>
+                    <div class="form-text">Commands to execute in your job</div>
+                </div>
+            </div>
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <button type="button" class="btn btn-primary" id="generateBtn">Generate Script</button>
+                <button type="button" class="btn btn-success" id="downloadBtn" disabled>Download Script</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="sticky-top" style="top: 20px;">
+            <h3>Generated Script</h3>
+            
+            <div id="errorAlert" class="alert alert-danger d-none">
+                <h5>Validation Errors:</h5>
+                <ul id="errorList"></ul>
+            </div>
+            
+            <div id="scriptOutput" class="code-output p-3" style="min-height: 400px;">
+                <em class="text-muted">Generated script will appear here...</em>
+            </div>
+            
+            <div class="mt-3">
+                <small class="text-muted">
+                    <strong>Usage:</strong> Save the script to a file (e.g., job.sh) and submit with:<br>
+                    <code>sbatch job.sh</code>
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentScript = '';
+
+document.getElementById('generateBtn').addEventListener('click', generateScript);
+document.getElementById('downloadBtn').addEventListener('click', downloadScript);
+
+function generateScript() {
+    const form = document.getElementById('jobForm');
+    const formData = new FormData(form);
+    const data = {};
+    
+    // Convert FormData to regular object
+    for (let [key, value] of formData.entries()) {
+        if (form.elements[key].type === 'checkbox') {
+            data[key] = form.elements[key].checked;
+        } else {
+            data[key] = value;
+        }
+    }
+    
+    // Hide any previous errors
+    document.getElementById('errorAlert').classList.add('d-none');
+    
+    fetch('/generate', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentScript = data.script;
+            document.getElementById('scriptOutput').innerHTML = 
+                '<pre><code class="language-bash">' + escapeHtml(data.script) + '</code></pre>';
+            Prism.highlightAll();
+            document.getElementById('downloadBtn').disabled = false;
+        } else {
+            showErrors(data.errors);
+            document.getElementById('downloadBtn').disabled = true;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showErrors(['An error occurred while generating the script.']);
+        document.getElementById('downloadBtn').disabled = true;
+    });
+}
+
+function downloadScript() {
+    if (!currentScript) return;
+    
+    const form = document.getElementById('jobForm');
+    const formData = new FormData(form);
+    const data = {};
+    
+    for (let [key, value] of formData.entries()) {
+        if (form.elements[key].type === 'checkbox') {
+            data[key] = form.elements[key].checked;
+        } else {
+            data[key] = value;
+        }
+    }
+    
+    fetch('/download', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = (data.job_name || 'job') + '.sh';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+    });
+}
+
+function showErrors(errors) {
+    const errorAlert = document.getElementById('errorAlert');
+    const errorList = document.getElementById('errorList');
+    
+    errorList.innerHTML = '';
+    errors.forEach(error => {
+        const li = document.createElement('li');
+        li.textContent = error;
+        errorList.appendChild(li);
+    });
+    
+    errorAlert.classList.remove('d-none');
+    document.getElementById('scriptOutput').innerHTML = 
+        '<em class="text-muted">Please fix validation errors and try again.</em>';
+}
+
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+}
+
+// Auto-generate on form changes (with debouncing)
+let timeout;
+document.getElementById('jobForm').addEventListener('input', function() {
+    clearTimeout(timeout);
+    timeout = setTimeout(generateScript, 1000);
+});
+</script>
+{% endblock %}

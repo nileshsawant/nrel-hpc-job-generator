@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Examples - NREL HPC Job Script Generator{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1>Example Job Scripts</h1>
+        <p class="lead">Common job script patterns for NREL HPC systems</p>
+        
+        <div class="alert alert-info">
+            <strong>Note:</strong> These are template examples. Replace placeholders like 
+            <code>your_project</code> with your actual project allocation and customize 
+            resource requests for your specific workload.
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    {% for key, example in examples.items() %}
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">{{ example.name }}</h4>
+            </div>
+            <div class="card-body">
+                <p class="card-text">{{ example.description }}</p>
+                
+                <div class="code-output">
+                    <pre><code class="language-bash">{{ example.script }}</code></pre>
+                </div>
+                
+                <div class="mt-3">
+                    <button class="btn btn-sm btn-outline-primary" onclick="copyToClipboard('{{ key }}')">
+                        Copy Script
+                    </button>
+                    <button class="btn btn-sm btn-success" onclick="downloadExample('{{ key }}', '{{ example.name }}')">
+                        Download
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4>Additional Resources</h4>
+            </div>
+            <div class="card-body">
+                <h5>NREL HPC Documentation</h5>
+                <ul>
+                    <li><a href="https://nrel.github.io/HPC/Documentation/Slurm/batch_jobs/" target="_blank">Slurm Batch Jobs Guide</a></li>
+                    <li><a href="https://nrel.github.io/HPC/Documentation/Systems/Kestrel/" target="_blank">Kestrel System Information</a></li>
+                    <li><a href="https://nrel.github.io/HPC/Documentation/Slurm/monitor_and_control/" target="_blank">Job Monitoring Commands</a></li>
+                </ul>
+                
+                <h5 class="mt-4">Common Slurm Commands</h5>
+                <div class="code-output">
+                    <pre><code class="language-bash"># Submit a job
+sbatch job_script.sh
+
+# Check job status
+squeue -u $USER
+
+# Cancel a job
+scancel &lt;job_id&gt;
+
+# View job details
+scontrol show job &lt;job_id&gt;
+
+# Check account balance
+sacctmgr show assoc user=$USER -p</code></pre>
+                </div>
+                
+                <h5 class="mt-4">Best Practices</h5>
+                <ul>
+                    <li><strong>Test first:</strong> Use the debug partition for initial testing</li>
+                    <li><strong>Right-size resources:</strong> Request only what you need to improve queue times</li>
+                    <li><strong>Use scratch storage:</strong> Store large temporary files in /scratch</li>
+                    <li><strong>Monitor jobs:</strong> Use <code>squeue</code> and <code>seff</code> to check job efficiency</li>
+                    <li><strong>Checkpoint long jobs:</strong> Save progress periodically for jobs longer than 24 hours</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const examples = {{ examples | tojson }};
+
+function copyToClipboard(exampleKey) {
+    const script = examples[exampleKey].script;
+    navigator.clipboard.writeText(script).then(function() {
+        // Create temporary success message
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.classList.remove('btn-outline-primary');
+        btn.classList.add('btn-success');
+        
+        setTimeout(function() {
+            btn.textContent = originalText;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-primary');
+        }, 2000);
+    }).catch(function(err) {
+        console.error('Could not copy text: ', err);
+        alert('Failed to copy to clipboard');
+    });
+}
+
+function downloadExample(exampleKey, exampleName) {
+    const script = examples[exampleKey].script;
+    const blob = new Blob([script], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = exampleName.toLowerCase().replace(/\s+/g, '_') + '.sh';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+}
+
+// Highlight code blocks
+document.addEventListener('DOMContentLoaded', function() {
+    Prism.highlightAll();
+});
+</script>
+{% endblock %}
