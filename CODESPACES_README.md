@@ -2,17 +2,40 @@
 
 Welcome to the NREL HPC Job Script Generator!
 
+## ⚠️ Codespace Startup Issues?
+
+If your Codespace fails to start or has network errors, try these solutions:
+
+### 1. **Restart the Codespace**
+- Close the failed Codespace 
+- Go back to the repository
+- Click "Code" → "Create codespace on main" (try again)
+
+### 2. **Use Different Region**
+- When creating Codespace, click "Configure and create codespace"
+- Choose a different region (US West, Europe, etc.)
+
+### 3. **Use Minimal Mode** (if network is slow)
+```bash
+./start-minimal.sh
+```
+
 ## Starting the Application
 
-### Option 1: Use the Start Script (Recommended)
+### Option 1: Standard Start (Recommended)
 ```bash
 ./start.sh
 ```
 
-### Option 2: Manual Start
+### Option 2: Minimal Start (for slow networks)
+```bash
+./start-minimal.sh
+```
+
+### Option 3: Manual Start
 ```bash
 # Install dependencies (if needed)
-pip install -r requirements.txt
+pip install flask werkzeug jinja2
 
 # Start the app
 python app.py

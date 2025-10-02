@@ -2,6 +2,32 @@
 
 ## GitHub Codespaces Issues
 
+### Problem: Codespace fails to start with network error
+**Solutions:**
+1. **Try a different region:**
+   - Click "Configure and create codespace" 
+   - Select different region (US West, Europe, Asia)
+   
+2. **Wait and retry:**
+   - GitHub may be experiencing issues
+   - Wait 5-10 minutes and try again
+   
+3. **Use minimal configuration:**
+   - Use `./start-minimal.sh` instead of `./start.sh`
+   - This uses fewer network resources
+
+4. **Clear browser cache:**
+   - Hard refresh (Ctrl+Shift+R / Cmd+Shift+R)
+   - Try incognito/private browsing mode
+
+### Problem: Codespace starts but setup takes forever
+**Solutions:**
+```bash
+# Skip full requirements, install minimal packages
+pip install flask werkzeug jinja2
+python app.py
+```
+
 ### Problem: App doesn't start automatically
 **Solution:** 
 ```bash

@@ -1,0 +1,7 @@
+{
+  "name": "NREL Job Generator (Minimal)",
+  "image": "python:3.11-slim",
+  "forwardPorts": [5000],
+  "postCreateCommand": "pip install flask werkzeug jinja2",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}"
+}
