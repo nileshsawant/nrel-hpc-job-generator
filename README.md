@@ -24,7 +24,7 @@ A web-based application for generating Slurm batch scripts for NREL High Perform
 ### For Users (No Installation Required)
 
 **Option 1: GitHub Codespaces** (Recommended for NREL researchers)
-1. Visit the [GitHub repository](https://github.com/YOUR_USERNAME/nrel-hpc-job-generator)
+1. Visit the [GitHub repository](https://github.com/nileshsawant/nrel-hpc-job-generator)
 2. Click "Code" → "Create codespace on main"
 3. Wait for the environment to load (app starts automatically)
 4. Use the web interface to generate job scripts!
@@ -42,7 +42,7 @@ A web-based application for generating Slurm batch scripts for NREL High Perform
 #### Installation
 1. Clone this repository:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/nrel-hpc-job-generator.git
+   git clone https://github.com/nileshsawant/nrel-hpc-job-generator.git
    cd nrel-hpc-job-generator
    ```
 
