@@ -112,9 +112,29 @@
                             </div>
                             <div class="col-md-4">
                                 <div class="mb-3">
-                                    <label for="ntasks" class="form-label">Total Tasks</label>
+                                    <label for="ntasks" class="form-label">Total MPI Ranks</label>
                                     <input type="number" class="form-control" id="ntasks" name="ntasks" 
-                                           placeholder="Optional" min="1">
+                                           placeholder="Optional - total MPI tasks" min="1">
+                                    <div class="form-text">Total number of MPI processes/ranks</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="ntasks_per_node" class="form-label">Ranks per Node</label>
+                                    <input type="number" class="form-control" id="ntasks_per_node" name="ntasks_per_node" 
+                                           placeholder="Optional - ranks per node" min="1">
+                                    <div class="form-text">MPI ranks per compute node</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="cpus_per_task" class="form-label">Threads per Rank</label>
+                                    <input type="number" class="form-control" id="cpus_per_task" name="cpus_per_task" 
+                                           placeholder="Optional - threads per rank" min="1">
+                                    <div class="form-text">CPU cores/threads per MPI rank</div>
                                 </div>
                             </div>
                             <div class="col-md-4">
@@ -124,16 +144,16 @@
                                            placeholder="Optional" min="1">
                                 </div>
                             </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <div class="mb-3">
                                     <label for="memory" class="form-label">Memory per Node</label>
                                     <input type="text" class="form-control" id="memory" name="memory" 
                                            placeholder="e.g., 50GB">
                                 </div>
                             </div>
+                        </div>
+                        
+                        <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="email" class="form-label">Email Address</label>
@@ -261,6 +281,8 @@
             
             lines.push(`#SBATCH --nodes=${data.nodes || 1}`);
             if (data.ntasks) lines.push(`#SBATCH --ntasks=${data.ntasks}`);
+            if (data.ntasks_per_node) lines.push(`#SBATCH --ntasks-per-node=${data.ntasks_per_node}`);
+            if (data.cpus_per_task) lines.push(`#SBATCH --cpus-per-task=${data.cpus_per_task}`);
             if (data.memory) lines.push(`#SBATCH --mem=${data.memory}`);
             if (data.gpus) lines.push(`#SBATCH --gpus=${data.gpus}`);
             
@@ -292,20 +314,70 @@
             
             // Commands
             lines.push('# Job execution');
+            
+            // Generate srun command if applicable
+            const srunCmd = generateSrunCommand(data);
+            
             if (data.commands) {
+                if (srunCmd) {
+                    lines.push('# MPI/Parallel execution with srun');
+                }
                 data.commands.split('\n').forEach(cmd => {
                     const command = cmd.trim();
-                    if (command) lines.push(command);
+                    if (command) {
+                        if (srunCmd && isMpiCommand(command)) {
+                            lines.push(`${srunCmd} ${command}`);
+                        } else {
+                            lines.push(command);
+                        }
+                    }
                 });
             } else {
-                lines.push('# Add your job commands here');
-                lines.push('echo "Replace this with your actual job commands"');
+                if (srunCmd) {
+                    lines.push('# MPI/Parallel job execution');
+                    lines.push(`# Use srun for MPI programs: ${srunCmd} your_mpi_program`);
+                    lines.push('# For serial programs within the allocation: your_program');
+                    lines.push('');
+                    lines.push('# Example MPI command:');
+                    lines.push(`# ${srunCmd} python your_parallel_script.py`);
+                    lines.push('');
+                    lines.push('echo "Add your MPI/parallel job commands here"');
+                } else {
+                    lines.push('# Add your job commands here');
+                    lines.push('echo "Replace this with your actual job commands"');
+                }
             }
             
             lines.push('');
             lines.push('echo "Job completed at: $(date)"');
             
             return lines.join('\n');
+        }
+
+        function generateSrunCommand(data) {
+            const nodes = parseInt(data.nodes || 1);
+            const ntasks = data.ntasks ? parseInt(data.ntasks) : null;
+            const ntasks_per_node = data.ntasks_per_node ? parseInt(data.ntasks_per_node) : null;
+            const cpus_per_task = data.cpus_per_task ? parseInt(data.cpus_per_task) : null;
+            
+            // Generate srun for multi-task or multi-node jobs
+            if (nodes > 1 || (ntasks && ntasks > 1) || ntasks_per_node || (cpus_per_task && cpus_per_task > 1)) {
+                const srunParts = ['srun'];
+                
+                if (ntasks) srunParts.push(`--ntasks=${ntasks}`);
+                if (ntasks_per_node) srunParts.push(`--ntasks-per-node=${ntasks_per_node}`);
+                if (cpus_per_task) srunParts.push(`--cpus-per-task=${cpus_per_task}`);
+                
+                return srunParts.join(' ');
+            }
+            
+            return null;
+        }
+
+        function isMpiCommand(command) {
+            const mpiIndicators = ['python', 'mpirun', 'mpiexec', './', 'vasp', 'lammps', 'openfoam'];
+            const cmdLower = command.toLowerCase();
+            return mpiIndicators.some(indicator => cmdLower.includes(indicator));
         }
 
         function downloadScript() {

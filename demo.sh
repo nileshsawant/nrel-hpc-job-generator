@@ -1,5 +1,17 @@
 #!/bin/bash
-# Demo script for NREL HPC Job Script Generator CLI
+# echo "2. MPIplicit ranks and threads:"
+echo "Command: python3 generate_job.py --account csc000 --time 2:00:00 --job-name mpi_demo --nodes 2 --ntasks 8 --ntasks-per-node 4 --cpus-per-task 4 --modules python/3.9 openmpi --commands 'python mpi_hybrid_script.py'"
+echo ""
+python3 generate_job.py \
+  --account csc000 \
+  --time 2:00:00 \
+  --job-name mpi_demo \
+  --nodes 2 \
+  --ntasks 8 \
+  --ntasks-per-node 4 \
+  --cpus-per-task 4 \
+  --modules python/3.9 openmpi \
+  --commands 'python mpi_hybrid_script.py'for NREL HPC Job Script Generator CLI
 
 echo "=== NREL HPC Job Script Generator CLI Demo ==="
 echo ""
@@ -44,7 +56,7 @@ echo ""
 echo "=================================================================="
 echo ""
 
-echo "4. Save to file example:"
+echo "6. Save to file example:"
 echo "Command: python3 generate_job.py --account csc000 --time 01:00:00 --job-name saved_job --save demo_job.sh"
 echo ""
 python3 generate_job.py \
@@ -60,7 +72,20 @@ echo ""
 echo "=================================================================="
 echo ""
 
-echo "5. High memory job example:"
+echo "4. Serial job (no srun needed):"
+echo "Command: python3 generate_job.py --account csc000 --time 00:30:00 --job-name serial_demo --commands 'echo Serial job' 'ls -la'"
+echo ""
+python3 generate_job.py \
+  --account csc000 \
+  --time 00:30:00 \
+  --job-name serial_demo \
+  --commands 'echo "Serial job"' 'ls -la'
+
+echo ""
+echo "=================================================================="
+echo ""
+
+echo "7. High memory job example:"
 echo "Command: python3 generate_job.py --account csc000 --time 4:00:00 --partition bigmem --memory 1500GB --job-name big_memory_job"
 echo ""
 python3 generate_job.py \

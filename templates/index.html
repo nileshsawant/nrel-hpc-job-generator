@@ -82,16 +82,18 @@
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label for="ntasks" class="form-label">Total Tasks</label>
+                            <label for="ntasks" class="form-label">Total MPI Ranks</label>
                             <input type="number" class="form-control" id="ntasks" name="ntasks" 
-                                   placeholder="Optional" min="1">
+                                   placeholder="Optional - total MPI tasks" min="1">
+                            <div class="form-text">Total number of MPI processes/ranks</div>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label for="ntasks_per_node" class="form-label">Tasks per Node</label>
+                            <label for="ntasks_per_node" class="form-label">Ranks per Node</label>
                             <input type="number" class="form-control" id="ntasks_per_node" name="ntasks_per_node" 
-                                   placeholder="Optional" min="1">
+                                   placeholder="Optional - ranks per node" min="1">
+                            <div class="form-text">MPI ranks per compute node</div>
                         </div>
                     </div>
                 </div>
@@ -99,9 +101,10 @@
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label for="cpus_per_task" class="form-label">CPUs per Task</label>
+                            <label for="cpus_per_task" class="form-label">Threads per Rank</label>
                             <input type="number" class="form-control" id="cpus_per_task" name="cpus_per_task" 
-                                   placeholder="Optional" min="1">
+                                   placeholder="Optional - threads per rank" min="1">
+                            <div class="form-text">CPU cores/threads per MPI rank</div>
                         </div>
                     </div>
                     <div class="col-md-4">

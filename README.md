@@ -148,9 +148,9 @@ python3 generate_job.py \
 
 #### Resources
 - `--nodes, -N`: Number of compute nodes (default: 1)
-- `--ntasks, -n`: Total number of MPI tasks
-- `--ntasks-per-node`: Tasks per node
-- `--cpus-per-task, -c`: CPUs per task (for threading)
+- `--ntasks, -n`: Total number of MPI ranks/tasks
+- `--ntasks-per-node, --ranks-per-node`: Number of MPI ranks per node
+- `--cpus-per-task, --threads-per-rank, -c`: Number of threads per MPI rank
 - `--memory, --mem`: Memory per node (e.g., `50GB`)
 - `--memory-per-cpu`: Memory per CPU (e.g., `2GB`)
 - `--gpus, -G`: Number of GPUs
@@ -262,6 +262,8 @@ done
 Both the CLI and web interface generate scripts with:
 
 - **Proper SBATCH directives** for resource allocation
+- **Automatic srun commands** for MPI/parallel jobs with correct parameters
+- **Explicit MPI configuration** (ranks per node, threads per rank)
 - **Job information logging** (job ID, nodes, timestamps)
 - **Module loading** for software environments
 - **Environment setup** commands

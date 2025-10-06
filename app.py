@@ -175,21 +175,76 @@ class JobScriptGenerator:
         
         # Job commands
         script_lines.append('# Job execution')
+        
+        # Generate srun command if applicable
+        srun_cmd = self._generate_srun_command(data)
+        
         if data.get('commands'):
+            if srun_cmd:
+                script_lines.append('# MPI/Parallel execution with srun')
             for line in data.get('commands', '').split('\n'):
                 line = line.strip()
                 if line:
-                    script_lines.append(line)
+                    if srun_cmd and self._is_mpi_command(line):
+                        script_lines.append(f'{srun_cmd} {line}')
+                    else:
+                        script_lines.append(line)
         else:
-            script_lines.extend([
-                '# Add your job commands here',
-                'echo "Replace this with your actual job commands"'
-            ])
+            if srun_cmd:
+                script_lines.extend([
+                    '# MPI/Parallel job execution',
+                    f'# Use srun for MPI programs: {srun_cmd} your_mpi_program',
+                    '# For serial programs within the allocation: your_program',
+                    '',
+                    '# Example MPI command:',
+                    f'# {srun_cmd} python your_parallel_script.py',
+                    '',
+                    'echo "Add your MPI/parallel job commands here"'
+                ])
+            else:
+                script_lines.extend([
+                    '# Add your job commands here',
+                    'echo "Replace this with your actual job commands"'
+                ])
         
         script_lines.append('')
         script_lines.append('echo "Job completed at: $(date)"')
         
         return '\n'.join(script_lines)
+    
+    def _generate_srun_command(self, data):
+        """Generate srun command with appropriate parameters"""
+        nodes = int(data.get('nodes', 1))
+        ntasks = data.get('ntasks')
+        ntasks_per_node = data.get('ntasks_per_node')
+        cpus_per_task = data.get('cpus_per_task')
+        
+        # Generate srun for multi-task or multi-node jobs
+        if (nodes > 1 or 
+            (ntasks and int(ntasks) > 1) or 
+            ntasks_per_node or 
+            (cpus_per_task and int(cpus_per_task) > 1)):
+            
+            srun_parts = ['srun']
+            
+            # Add explicit parameters to srun
+            if ntasks:
+                srun_parts.append(f'--ntasks={ntasks}')
+            if ntasks_per_node:
+                srun_parts.append(f'--ntasks-per-node={ntasks_per_node}')
+            if cpus_per_task:
+                srun_parts.append(f'--cpus-per-task={cpus_per_task}')
+                
+            return ' '.join(srun_parts)
+        
+        return None
+    
+    def _is_mpi_command(self, command):
+        """Check if a command appears to be an MPI/parallel program"""
+        # Commands that typically benefit from srun
+        mpi_indicators = ['python', 'mpirun', 'mpiexec', './', 'vasp', 'lammps', 'openfoam']
+        cmd_lower = command.lower()
+        return any(indicator in cmd_lower for indicator in mpi_indicators)
 
 generator = JobScriptGenerator()
 

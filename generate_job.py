@@ -67,11 +67,11 @@ Examples:
         parser.add_argument('--nodes', '-N', type=int, default=1,
                           help='Number of nodes (default: 1)')
         parser.add_argument('--ntasks', '-n', type=int,
-                          help='Total number of tasks')
-        parser.add_argument('--ntasks-per-node', type=int,
-                          help='Number of tasks per node')
-        parser.add_argument('--cpus-per-task', '-c', type=int,
-                          help='Number of CPUs per task')
+                          help='Total number of MPI tasks/ranks')
+        parser.add_argument('--ntasks-per-node', '--ranks-per-node', type=int,
+                          help='Number of MPI ranks per node')
+        parser.add_argument('--cpus-per-task', '--threads-per-rank', '-c', type=int,
+                          help='Number of CPUs/threads per MPI rank')
         parser.add_argument('--memory', '--mem', type=str,
                           help='Memory per node (e.g., 50GB)')
         parser.add_argument('--memory-per-cpu', type=str,
@@ -156,7 +156,8 @@ Examples:
         except ValueError:
             nodes = 1
         
-        ntasks = input("Total tasks [optional]: ").strip()
+        print("\\nMPI Configuration (leave blank for non-MPI jobs):")
+        ntasks = input("Total MPI ranks/tasks [optional]: ").strip()
         if ntasks:
             try:
                 ntasks = int(ntasks)
@@ -164,6 +165,24 @@ Examples:
                 ntasks = None
         else:
             ntasks = None
+        
+        ntasks_per_node = input("MPI ranks per node [optional]: ").strip()
+        if ntasks_per_node:
+            try:
+                ntasks_per_node = int(ntasks_per_node)
+            except ValueError:
+                ntasks_per_node = None
+        else:
+            ntasks_per_node = None
+            
+        cpus_per_task = input("Threads per MPI rank (CPUs per task) [optional]: ").strip()
+        if cpus_per_task:
+            try:
+                cpus_per_task = int(cpus_per_task)
+            except ValueError:
+                cpus_per_task = None
+        else:
+            cpus_per_task = None
         
         gpus = input("Number of GPUs [optional]: ").strip()
         if gpus:
@@ -196,8 +215,8 @@ Examples:
         args.qos = None
         args.nodes = nodes
         args.ntasks = ntasks
-        args.ntasks_per_node = None
-        args.cpus_per_task = None
+        args.ntasks_per_node = ntasks_per_node
+        args.cpus_per_task = cpus_per_task
         args.memory = memory
         args.memory_per_cpu = None
         args.gpus = gpus
@@ -300,28 +319,89 @@ Examples:
         
         # Job commands
         lines.append('# Job execution')
+        
+        # Generate srun command if applicable
+        srun_cmd = self._generate_srun_command(args)
+        
         if args.commands:
+            if srun_cmd:
+                lines.append('# MPI/Parallel execution with srun')
             for command in args.commands:
                 if command:
-                    lines.append(command)
+                    if srun_cmd and self._is_mpi_command(command):
+                        lines.append(f'{srun_cmd} {command}')
+                    else:
+                        lines.append(command)
         elif args.script_file:
             if os.path.exists(args.script_file):
+                if srun_cmd:
+                    lines.append('# MPI/Parallel execution with srun')
                 with open(args.script_file, 'r') as f:
                     for line in f:
-                        lines.append(line.rstrip())
+                        line = line.rstrip()
+                        if line and srun_cmd and self._is_mpi_command(line):
+                            lines.append(f'{srun_cmd} {line}')
+                        else:
+                            lines.append(line)
             else:
                 lines.append(f'# Script file {args.script_file} not found')
                 lines.append('echo "Script file not found"')
         else:
-            lines.extend([
-                '# Add your job commands here',
-                'echo "Replace this with your actual job commands"'
-            ])
+            if srun_cmd:
+                lines.extend([
+                    '# MPI/Parallel job execution',
+                    f'# Use srun for MPI programs: {srun_cmd} your_mpi_program',
+                    '# For serial programs within the allocation: your_program',
+                    '',
+                    '# Example MPI command:',
+                    f'# {srun_cmd} python your_parallel_script.py',
+                    '',
+                    'echo "Add your MPI/parallel job commands here"'
+                ])
+            else:
+                lines.extend([
+                    '# Add your job commands here',
+                    'echo "Replace this with your actual job commands"'
+                ])
         
         lines.append('')
         lines.append('echo "Job completed at: $(date)"')
         
         return '\n'.join(lines)
+    
+    def _generate_srun_command(self, args):
+        """Generate srun command with appropriate parameters"""
+        nodes = args.nodes
+        ntasks = args.ntasks
+        ntasks_per_node = args.ntasks_per_node
+        cpus_per_task = args.cpus_per_task
+        
+        # Generate srun for multi-task or multi-node jobs
+        if (nodes > 1 or 
+            (ntasks and ntasks > 1) or 
+            ntasks_per_node or 
+            (cpus_per_task and cpus_per_task > 1)):
+            
+            srun_parts = ['srun']
+            
+            # Add explicit parameters to srun
+            if ntasks:
+                srun_parts.append(f'--ntasks={ntasks}')
+            if ntasks_per_node:
+                srun_parts.append(f'--ntasks-per-node={ntasks_per_node}')
+            if cpus_per_task:
+                srun_parts.append(f'--cpus-per-task={cpus_per_task}')
+                
+            return ' '.join(srun_parts)
+        
+        return None
+    
+    def _is_mpi_command(self, command):
+        """Check if a command appears to be an MPI/parallel program"""
+        # Commands that typically benefit from srun
+        mpi_indicators = ['python', 'mpirun', 'mpiexec', './', 'vasp', 'lammps', 'openfoam']
+        cmd_lower = command.lower()
+        return any(indicator in cmd_lower for indicator in mpi_indicators)
 
     def run(self):
         """Main CLI entry point"""
