@@ -29,14 +29,14 @@ echo ""
 echo "=================================================================="
 echo ""
 
-echo "3. GPU job example:"
-echo "Command: python3 generate_job.py --account csc000 --time 30 --partition debug --gpus 1 --modules cuda/11.8 --commands nvidia-smi"
+echo "3. GPU job example (H100):"
+echo "Command: python3 generate_job.py --account csc000 --time 01:00:00 --partition gpu-h100 --gpus 2 --modules cuda/11.8 --commands nvidia-smi"
 echo ""
 python3 generate_job.py \
   --account csc000 \
-  --time 30 \
-  --partition debug \
-  --gpus 1 \
+  --time 01:00:00 \
+  --partition gpu-h100 \
+  --gpus 2 \
   --modules cuda/11.8 \
   --commands nvidia-smi
 
@@ -60,6 +60,28 @@ echo ""
 echo "=================================================================="
 echo ""
 
+echo "5. High memory job example:"
+echo "Command: python3 generate_job.py --account csc000 --time 4:00:00 --partition bigmem --memory 1500GB --job-name big_memory_job"
+echo ""
+python3 generate_job.py \
+  --account csc000 \
+  --time 4:00:00 \
+  --partition bigmem \
+  --memory 1500GB \
+  --job-name big_memory_job
+
+echo ""
+echo "=================================================================="
+echo ""
+
 echo "Demo complete! Try running:"
 echo "  python3 generate_job.py --interactive"
 echo "  python3 generate_job.py --help"
+echo ""
+echo "Available partitions include:"
+echo "  - debug, short, standard, long (standard CPU nodes)"
+echo "  - shared, sharedl (shared CPU nodes)"
+echo "  - hbw, hbwl (high bandwidth nodes with dual NICs)"
+echo "  - medmem, bigmem, bigmeml (high memory nodes)"
+echo "  - nvme (nodes with local NVMe storage)"
+echo "  - gpu-h100, gpu-h100s, gpu-h100l (NVIDIA H100 GPU nodes)"

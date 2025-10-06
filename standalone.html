@@ -76,11 +76,22 @@
                                 <div class="mb-3">
                                     <label for="partition" class="form-label">Partition</label>
                                     <select class="form-select" id="partition" name="partition">
-                                        <option value="">Default</option>
-                                        <option value="debug">debug - Debug partition (30 min max)</option>
-                                        <option value="short">short - Short jobs (4 hours max)</option>
-                                        <option value="standard">standard - Standard jobs (24 hours max)</option>
-                                        <option value="long">long - Long jobs (48 hours max)</option>
+                                        <option value="">Default (Auto-select based on resources)</option>
+                                        <option value="debug">debug - Debug partition (1 hour max, 1 job per user, max 2 nodes)</option>
+                                        <option value="short">short - Jobs with walltimes <= 4 hours (2240 nodes total)</option>
+                                        <option value="standard">standard - Jobs with walltimes <= 2 days (2240 nodes, 1050 per user)</option>
+                                        <option value="long">long - Jobs with walltimes > 2 days (430 nodes, 215 per user)</option>
+                                        <option value="shared">shared - Shared nodes (128 nodes, half partition per user)</option>
+                                        <option value="sharedl">sharedl - Shared nodes for long jobs (32 nodes, 16 per user)</option>
+                                        <option value="hbw">hbw - High bandwidth nodes with dual NICs (min 2 nodes, 512 total)</option>
+                                        <option value="hbwl">hbwl - High bandwidth nodes for long jobs (128 nodes, 64 per user)</option>
+                                        <option value="medmem">medmem - Medium memory nodes with 1TB RAM (64 nodes, 32 per user)</option>
+                                        <option value="bigmem">bigmem - Big memory nodes with 2TB RAM (10 nodes, 4 per user)</option>
+                                        <option value="bigmeml">bigmeml - Big memory nodes for long jobs (4 nodes, 2 per user)</option>
+                                        <option value="nvme">nvme - Nodes with 1.7TB NVMe local drives (256 nodes, 128 per user)</option>
+                                        <option value="gpu-h100">gpu-h100 - GPU nodes with 4 NVIDIA H100 GPUs (156 nodes total)</option>
+                                        <option value="gpu-h100s">gpu-h100s - GPU nodes for short jobs <= 4 hours (156 nodes total)</option>
+                                        <option value="gpu-h100l">gpu-h100l - GPU nodes for long jobs > 2 days (39 nodes total)</option>
                                     </select>
                                 </div>
                             </div>

@@ -9,10 +9,21 @@ class JobScriptGenerator:
     
     def __init__(self):
         self.partitions = {
-            'debug': {'max_time': '00:30:00', 'description': 'Debug partition (30 min max)'},
-            'short': {'max_time': '04:00:00', 'description': 'Short jobs (4 hours max)'},
-            'standard': {'max_time': '24:00:00', 'description': 'Standard jobs (24 hours max)'},
-            'long': {'max_time': '48:00:00', 'description': 'Long jobs (48 hours max)'}
+            'debug': {'max_time': '01:00:00', 'description': 'Debug partition (1 hour max, 1 job per user, max 2 nodes)'},
+            'short': {'max_time': '04:00:00', 'description': 'Jobs with walltimes <= 4 hours (2240 nodes total)'},
+            'standard': {'max_time': '2-00:00:00', 'description': 'Jobs with walltimes <= 2 days (2240 nodes, 1050 per user)'},
+            'long': {'max_time': '10-00:00:00', 'description': 'Jobs with walltimes > 2 days (430 nodes, 215 per user)'},
+            'shared': {'max_time': '2-00:00:00', 'description': 'Shared nodes (128 nodes, half partition per user)'},
+            'sharedl': {'max_time': '10-00:00:00', 'description': 'Shared nodes for long jobs (32 nodes, 16 per user)'},
+            'hbw': {'max_time': '2-00:00:00', 'description': 'High bandwidth nodes with dual NICs (min 2 nodes, 512 total)'},
+            'hbwl': {'max_time': '10-00:00:00', 'description': 'High bandwidth nodes for long jobs (128 nodes, 64 per user)'},
+            'medmem': {'max_time': '10-00:00:00', 'description': 'Medium memory nodes with 1TB RAM (64 nodes, 32 per user)'},
+            'bigmem': {'max_time': '2-00:00:00', 'description': 'Big memory nodes with 2TB RAM (10 nodes, 4 per user)'},
+            'bigmeml': {'max_time': '10-00:00:00', 'description': 'Big memory nodes for long jobs (4 nodes, 2 per user)'},
+            'nvme': {'max_time': '2-00:00:00', 'description': 'Nodes with 1.7TB NVMe local drives (256 nodes, 128 per user)'},
+            'gpu-h100': {'max_time': '2-00:00:00', 'description': 'GPU nodes with 4 NVIDIA H100 GPUs (156 nodes total)'},
+            'gpu-h100s': {'max_time': '04:00:00', 'description': 'GPU nodes for short jobs <= 4 hours (156 nodes total)'},
+            'gpu-h100l': {'max_time': '10-00:00:00', 'description': 'GPU nodes for long jobs > 2 days (39 nodes total)'}
         }
         
         self.qos_options = {

@@ -163,15 +163,29 @@ python3 generate_job.py \
 ### NREL Kestrel Specific Information
 
 #### Partitions and Time Limits
-- **debug**: 30 minutes max, for testing
-- **short**: 4 hours max, higher priority
-- **standard**: 24 hours max, normal queue
-- **long**: 48 hours max, for long runs
+- **debug**: 1 hour max, for testing (1 job per user, max 2 nodes)
+- **short**: 4 hours max, for shorter jobs (2240 nodes total)
+- **standard**: 2 days max, normal queue (2240 nodes, 1050 per user)
+- **long**: 10 days max, for long runs (430 nodes, 215 per user)
+- **shared**: 2 days max, shared nodes (128 nodes, half partition per user)
+- **sharedl**: 10 days max, shared nodes for long jobs (32 nodes, 16 per user)
+- **hbw**: 2 days max, high bandwidth nodes with dual NICs (min 2 nodes, 512 total)
+- **hbwl**: 10 days max, high bandwidth nodes for long jobs (128 nodes, 64 per user)
+- **medmem**: 10 days max, medium memory nodes with 1TB RAM (64 nodes, 32 per user)
+- **bigmem**: 2 days max, big memory nodes with 2TB RAM (10 nodes, 4 per user)
+- **bigmeml**: 10 days max, big memory nodes for long jobs (4 nodes, 2 per user)
+- **nvme**: 2 days max, nodes with 1.7TB NVMe local drives (256 nodes, 128 per user)
+- **gpu-h100**: 2 days max, GPU nodes with 4 NVIDIA H100 GPUs (156 nodes total)
+- **gpu-h100s**: 4 hours max, GPU nodes for short jobs (156 nodes total)
+- **gpu-h100l**: 10 days max, GPU nodes for long jobs (39 nodes total)
 
 #### Typical Node Configurations
-- **Standard compute**: 104 cores, ~250GB RAM per node
-- **GPU nodes**: Various GPU types available
-- **High memory**: Up to 1TB RAM on special nodes
+- **Standard CPU nodes**: 104 cores, 240GB usable RAM per node
+- **GPU nodes**: 4 NVIDIA H100 GPUs (80GB each), 128 cores, 350-1440GB RAM
+- **Medium memory nodes**: 104 cores, 1TB RAM (64 nodes available)
+- **Big memory nodes**: 104 cores, 2TB RAM, 5.6TB NVMe (10 nodes available)
+- **High bandwidth nodes**: 104 cores, dual NICs, some with 1TB RAM (512 nodes)
+- **NVMe nodes**: 104 cores, 1.7TB local NVMe storage (256 nodes)
 
 #### Account Format
 Your account handle typically starts with your organization code:
