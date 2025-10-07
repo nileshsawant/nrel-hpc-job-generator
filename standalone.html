@@ -3,46 +3,143 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NREL HPC Job Script Generator</title>
+    <title>NREL Kestrel HPC Job Script Generator</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        .code-output {
+        .form-section {
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .preview-section {
             background-color: #f8f9fa;
             border: 1px solid #dee2e6;
             border-radius: 0.375rem;
+            padding: 1rem;
             font-family: 'Courier New', monospace;
-            font-size: 0.875rem;
-            line-height: 1.4;
+            font-size: 0.9em;
+            white-space: pre-wrap;
             max-height: 500px;
             overflow-y: auto;
-            white-space: pre-wrap;
         }
-        .form-section {
+        .app-template {
+            display: none;
+        }
+        .app-template.active {
+            display: block;
+        }
+        .template-description {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .nav-pills .nav-link.active {
+            background-color: #0d6efd;
+        }
+        .help-text {
+            font-size: 0.875rem;
+            color: #6c757d;
+            margin-top: 0.25rem;
+        }
+        .example-commands {
             background-color: #f8f9fa;
-            border-radius: 0.5rem;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            padding: 0.75rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8em;
+            margin-top: 0.5rem;
         }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <span class="navbar-brand">NREL HPC Job Script Generator</span>
-        </div>
-    </nav>
-
     <div class="container mt-4">
         <div class="row">
-            <div class="col-lg-6">
-                <h1>NREL HPC Job Script Generator</h1>
-                <p class="lead">Generate Slurm batch scripts for the Kestrel supercomputer</p>
-                
-                <div class="alert alert-info">
-                    <strong>Note:</strong> This is a client-side generator. All processing happens in your browser - no data is sent to external servers.
-                </div>
+            <div class="col-12">
+                <h1 class="text-center mb-4">NREL Kestrel HPC Job Script Generator</h1>
+                <p class="text-muted text-center">Generate optimized Slurm job scripts for NREL's Kestrel HPC system</p>
+            </div>
+        </div>
 
-                <form id="jobForm">
+        <!-- Application Templates Navigation -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <ul class="nav nav-pills justify-content-center" id="appTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="general-tab" data-bs-toggle="pill" data-bs-target="#general" type="button" role="tab" onclick="setApplicationTemplate('general')">General</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="gaussian-tab" data-bs-toggle="pill" data-bs-target="#gaussian" type="button" role="tab" onclick="setApplicationTemplate('gaussian')">Gaussian</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="lammps-tab" data-bs-toggle="pill" data-bs-target="#lammps" type="button" role="tab" onclick="setApplicationTemplate('lammps')">LAMMPS</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="ansys-tab" data-bs-toggle="pill" data-bs-target="#ansys" type="button" role="tab" onclick="setApplicationTemplate('ansys')">ANSYS</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="comsol-tab" data-bs-toggle="pill" data-bs-target="#comsol" type="button" role="tab" onclick="setApplicationTemplate('comsol')">COMSOL</button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Application Template Descriptions -->
+        <div class="tab-content" id="appTabContent">
+            <div class="tab-pane fade show active app-template" id="general" role="tabpanel">
+                <div class="template-description">
+                    <h5><i class="fas fa-cogs"></i> General Template</h5>
+                    <p>Standard job script template for general HPC workloads. Includes MPI support and automatic srun command generation.</p>
+                </div>
+            </div>
+            <div class="tab-pane fade app-template" id="gaussian" role="tabpanel">
+                <div class="template-description">
+                    <h5><i class="fas fa-atom"></i> Gaussian Template</h5>
+                    <p>Optimized for Gaussian16 quantum chemistry calculations. Includes automatic g16_nrel script usage, gaussian module loading, and scratch space configuration. Best performance on nvme partition for I/O intensive jobs.</p>
+                    <div class="example-commands">
+                        <strong>Example execution:</strong><br>
+                        g16_nrel &lt; input.gjf &gt; output.log
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane fade app-template" id="lammps" role="tabpanel">
+                <div class="template-description">
+                    <h5><i class="fas fa-cubes"></i> LAMMPS Template</h5>
+                    <p>Configured for LAMMPS molecular dynamics simulations. Supports both CPU and GPU execution modes. For jobs >10 nodes, automatically suggests high-bandwidth partition (hbw) for optimal performance.</p>
+                    <div class="example-commands">
+                        <strong>CPU Example:</strong> srun --mpi=pmi2 lmp -in input.in<br>
+                        <strong>GPU Example:</strong> srun --mpi=pmi2 lmp -sf gpu -pk gpu 2 -in input.in
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane fade app-template" id="ansys" role="tabpanel">
+                <div class="template-description">
+                    <h5><i class="fas fa-wind"></i> ANSYS Template</h5>
+                    <p>Setup for ANSYS Fluent and Mechanical simulations. Includes HPC Pack license optimization and proper MPI configuration. Supports both CPU and GPU acceleration modes.</p>
+                    <div class="example-commands">
+                        <strong>Fluent:</strong> fluent 3ddp -g -t$SLURM_NPROCS -mpi=intel -cnf=nodelist -i journal.jou<br>
+                        <strong>Mechanical:</strong> ansys251 -dis -mpi intelmpi2018 -machines $machines -i input.dat
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane fade app-template" id="comsol" role="tabpanel">
+                <div class="template-description">
+                    <h5><i class="fas fa-calculator"></i> COMSOL Template</h5>
+                    <p>Optimized for COMSOL Multiphysics finite element analysis. Supports single-node multithreaded and multi-node MPI+OpenMP hybrid execution. GPU acceleration available for specific physics modules.</p>
+                    <div class="example-commands">
+                        <strong>Single-node:</strong> comsol batch -np 104 -inputfile input.mph -outputfile output<br>
+                        <strong>Multi-node:</strong> comsol batch -mpibootstrap slurm -inputfile input.mph -outputfile output
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Form Column -->
+            <div class="col-md-6">
+                <form id="jobScriptForm">
                     <!-- Required Parameters -->
                     <div class="form-section">
                         <h4>Required Parameters</h4>
@@ -211,17 +308,118 @@
         </div>
     </div>
 
+    <!-- Bootstrap JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
     <script>
+        let currentTemplate = 'general';
         let currentScript = '';
 
+        // Application template configurations
+        const applicationTemplates = {
+            gaussian: {
+                modules: ['gaussian'],
+                environment: {
+                    'GAUSS_SCRDIR': '/tmp/scratch',
+                    'GAUSS_MEMDEF': '8GB'
+                },
+                defaultCommands: 'g16_nrel < input.gjf > output.log',
+                recommendedPartition: 'nvme',
+                description: 'Gaussian16 quantum chemistry calculations',
+                mpiSupport: false
+            },
+            lammps: {
+                modules: ['lammps'],
+                environment: {},
+                defaultCommands: 'srun --mpi=pmi2 lmp -in input.in',
+                recommendedPartition: 'standard',
+                description: 'LAMMPS molecular dynamics simulations',
+                mpiSupport: true
+            },
+            ansys: {
+                modules: ['ansys'],
+                environment: {
+                    'ANSYSLMD_LICENSE_FILE': '1055@license-server'
+                },
+                defaultCommands: 'fluent 3ddp -g -t$SLURM_NPROCS -mpi=intel -cnf=nodelist -i journal.jou',
+                recommendedPartition: 'standard',
+                description: 'ANSYS Fluent and Mechanical simulations',
+                mpiSupport: true
+            },
+            comsol: {
+                modules: ['comsol'],
+                environment: {},
+                defaultCommands: 'comsol batch -mpibootstrap slurm -inputfile input.mph -outputfile output',
+                recommendedPartition: 'standard',
+                description: 'COMSOL Multiphysics finite element analysis',
+                mpiSupport: true
+            }
+        };
+
+        function setApplicationTemplate(templateName) {
+            currentTemplate = templateName;
+            
+            if (templateName === 'general') {
+                // Reset to defaults for general template
+                document.getElementById('modules').value = '';
+                document.getElementById('commands').value = '';
+                document.getElementById('partition').value = '';
+            } else {
+                const template = applicationTemplates[templateName];
+                if (template) {
+                    // Set modules
+                    document.getElementById('modules').value = template.modules.join('\n');
+                    
+                    // Set default commands
+                    document.getElementById('commands').value = template.defaultCommands;
+                    
+                    // Set recommended partition if not already set
+                    if (!document.getElementById('partition').value && template.recommendedPartition) {
+                        document.getElementById('partition').value = template.recommendedPartition;
+                    }
+                    
+                    // Auto-adjust resources based on template
+                    adjustResourcesForTemplate(templateName);
+                }
+            }
+            
+            // Regenerate script with new template
+            setTimeout(generateScript, 100);
+        }
+
+        function adjustResourcesForTemplate(templateName) {
+            const template = applicationTemplates[templateName];
+            const nodes = parseInt(document.getElementById('nodes').value || '1');
+            
+            if (templateName === 'gaussian') {
+                // Gaussian typically runs on single node
+                if (!document.getElementById('ntasks_per_node').value) {
+                    document.getElementById('ntasks_per_node').value = '1';
+                }
+                if (!document.getElementById('cpus_per_task').value) {
+                    document.getElementById('cpus_per_task').value = '8';
+                }
+            } else if (templateName === 'lammps') {
+                // LAMMPS benefits from high bandwidth for large jobs
+                if (nodes > 10 && !document.getElementById('partition').value) {
+                    document.getElementById('partition').value = 'hbw';
+                }
+            } else if (templateName === 'comsol') {
+                // COMSOL can use hybrid MPI+OpenMP
+                if (nodes === 1 && !document.getElementById('cpus_per_task').value) {
+                    document.getElementById('cpus_per_task').value = '104';
+                }
+            }
+        }
+
         function generateScript() {
-            const form = document.getElementById('jobForm');
+            const form = document.getElementById('jobScriptForm');
             const formData = new FormData(form);
             const data = {};
             
             // Get form data
             for (let [key, value] of formData.entries()) {
-                data[key] = value.trim();
+                if (value) data[key] = value.trim();
             }
             
             // Validate
@@ -231,7 +429,7 @@
                 return;
             }
             
-            // Generate script
+            // Generate script with template
             const script = createJobScript(data);
             currentScript = script;
             
@@ -263,13 +461,17 @@
 
         function createJobScript(data) {
             const lines = [];
+            const template = currentTemplate !== 'general' ? applicationTemplates[currentTemplate] : null;
             
             // Header
             lines.push('#!/bin/bash');
             lines.push('');
             lines.push('# NREL HPC Job Script');
             lines.push(`# Generated on: ${new Date().toISOString().split('T')[0]}`);
-            lines.push(`# Job: ${data.job_name || 'my_job'}`);
+            lines.push(`# Template: ${currentTemplate}`);
+            if (template) {
+                lines.push(`# Application: ${template.description}`);
+            }
             lines.push('');
             
             // SBATCH directives
@@ -294,13 +496,22 @@
             lines.push('#SBATCH --output=slurm-%j.out');
             lines.push('');
             
-            // Job info
+            // Job information
             lines.push('# Job information');
             lines.push('echo "Job started at: $(date)"');
             lines.push('echo "Job ID: $SLURM_JOB_ID"');
             lines.push('echo "Node(s): $SLURM_JOB_NODELIST"');
             lines.push('echo ""');
             lines.push('');
+            
+            // Environment setup for template
+            if (template && Object.keys(template.environment).length > 0) {
+                lines.push('# Application environment setup');
+                Object.entries(template.environment).forEach(([key, value]) => {
+                    lines.push(`export ${key}="${value}"`);
+                });
+                lines.push('');
+            }
             
             // Modules
             if (data.modules) {
@@ -312,20 +523,15 @@
                 lines.push('');
             }
             
-            // Commands
+            // Job execution
             lines.push('# Job execution');
             
-            // Generate srun command if applicable
-            const srunCmd = generateSrunCommand(data);
-            
             if (data.commands) {
-                if (srunCmd) {
-                    lines.push('# MPI/Parallel execution with srun');
-                }
+                const srunCmd = generateSrunCommand(data, template);
                 data.commands.split('\n').forEach(cmd => {
                     const command = cmd.trim();
                     if (command) {
-                        if (srunCmd && isMpiCommand(command)) {
+                        if (srunCmd && shouldUseSrun(command, template)) {
                             lines.push(`${srunCmd} ${command}`);
                         } else {
                             lines.push(command);
@@ -333,19 +539,8 @@
                     }
                 });
             } else {
-                if (srunCmd) {
-                    lines.push('# MPI/Parallel job execution');
-                    lines.push(`# Use srun for MPI programs: ${srunCmd} your_mpi_program`);
-                    lines.push('# For serial programs within the allocation: your_program');
-                    lines.push('');
-                    lines.push('# Example MPI command:');
-                    lines.push(`# ${srunCmd} python your_parallel_script.py`);
-                    lines.push('');
-                    lines.push('echo "Add your MPI/parallel job commands here"');
-                } else {
-                    lines.push('# Add your job commands here');
-                    lines.push('echo "Replace this with your actual job commands"');
-                }
+                lines.push('# Add your job commands here');
+                lines.push('echo "Replace this with your actual job commands"');
             }
             
             lines.push('');
@@ -354,28 +549,42 @@
             return lines.join('\n');
         }
 
-        function generateSrunCommand(data) {
+        function generateSrunCommand(data, template) {
             const nodes = parseInt(data.nodes || 1);
             const ntasks = data.ntasks ? parseInt(data.ntasks) : null;
             const ntasks_per_node = data.ntasks_per_node ? parseInt(data.ntasks_per_node) : null;
             const cpus_per_task = data.cpus_per_task ? parseInt(data.cpus_per_task) : null;
             
-            // Generate srun for multi-task or multi-node jobs
-            if (nodes > 1 || (ntasks && ntasks > 1) || ntasks_per_node || (cpus_per_task && cpus_per_task > 1)) {
-                const srunParts = ['srun'];
-                
-                if (ntasks) srunParts.push(`--ntasks=${ntasks}`);
-                if (ntasks_per_node) srunParts.push(`--ntasks-per-node=${ntasks_per_node}`);
-                if (cpus_per_task) srunParts.push(`--cpus-per-task=${cpus_per_task}`);
-                
-                return srunParts.join(' ');
+            // Check if we need srun
+            const needsSrun = nodes > 1 || (ntasks && ntasks > 1) || ntasks_per_node || 
+                            (template && template.mpiSupport);
+            
+            if (!needsSrun) return null;
+            
+            const srunParts = ['srun'];
+            
+            // Add MPI setup for specific applications
+            if (template) {
+                if (template === applicationTemplates.lammps || template === applicationTemplates.ansys) {
+                    srunParts.push('--mpi=pmi2');
+                }
             }
             
-            return null;
+            if (ntasks) srunParts.push(`--ntasks=${ntasks}`);
+            if (ntasks_per_node) srunParts.push(`--ntasks-per-node=${ntasks_per_node}`);
+            if (cpus_per_task) srunParts.push(`--cpus-per-task=${cpus_per_task}`);
+            
+            return srunParts.join(' ');
         }
 
-        function isMpiCommand(command) {
-            const mpiIndicators = ['python', 'mpirun', 'mpiexec', './', 'vasp', 'lammps', 'openfoam'];
+        function shouldUseSrun(command, template) {
+            // Template-specific logic
+            if (template === applicationTemplates.gaussian) {
+                return false; // Gaussian uses g16_nrel wrapper
+            }
+            
+            // General MPI detection
+            const mpiIndicators = ['lmp', 'fluent', 'comsol', 'python', 'mpirun', 'mpiexec'];
             const cmdLower = command.toLowerCase();
             return mpiIndicators.some(indicator => cmdLower.includes(indicator));
         }
@@ -384,12 +593,13 @@
             if (!currentScript) return;
             
             const jobName = document.getElementById('job_name').value || 'job';
+            const templateName = currentTemplate !== 'general' ? `_${currentTemplate}` : '';
             const blob = new Blob([currentScript], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${jobName}.sh`;
+            a.download = `${jobName}${templateName}.sh`;
             a.click();
             
             URL.revokeObjectURL(url);
@@ -412,9 +622,14 @@
 
         // Auto-generate on form changes
         let timeout;
-        document.getElementById('jobForm').addEventListener('input', function() {
+        document.getElementById('jobScriptForm').addEventListener('input', function() {
             clearTimeout(timeout);
             timeout = setTimeout(generateScript, 500);
+        });
+        
+        // Initialize with general template
+        document.addEventListener('DOMContentLoaded', function() {
+            setApplicationTemplate('general');
         });
     </script>
 </body>

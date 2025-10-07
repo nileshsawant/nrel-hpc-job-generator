@@ -10,12 +10,46 @@ A comprehensive solution for generating Slurm batch scripts for NREL High Perfor
 
 ## Features
 
-- **Interactive Web Interface**: Easy-to-use form for configuring job parameters
+- **🎯 Application-Specific Templates**: Pre-configured templates for Gaussian, LAMMPS, ANSYS, and COMSOL
+- **Interactive Web Interface**: Easy-to-use form with tabbed application selection
 - **Real-time Validation**: Input validation with helpful error messages
 - **Live Preview**: See generated script as you type
+- **Smart Defaults**: Application-aware recommendations for partitions and resources
 - **Download Scripts**: Save generated scripts as `.sh` files
 - **Example Library**: Common job script patterns and templates
 - **NREL-Specific**: Tailored for NREL HPC systems and best practices
+
+## 🧪 Application-Specific Templates
+
+The generator now includes optimized templates for common NREL HPC applications:
+
+### Gaussian (Quantum Chemistry)
+- **Module**: `gaussian`
+- **Environment**: Automatic GAUSS_SCRDIR and memory setup
+- **Recommended partition**: `nvme` (for I/O intensive calculations)
+- **Command**: Uses `g16_nrel` wrapper for optimal performance
+- **Usage**: Single-node jobs with automatic scratch space configuration
+
+### LAMMPS (Molecular Dynamics)
+- **Module**: `lammps/080223-intel-mpich`
+- **MPI optimization**: Automatic `--mpi=pmi2` for best performance
+- **Recommended partition**: `hbw` (for jobs >10 nodes)
+- **Command**: Supports both CPU and GPU modes
+- **Usage**: Scalable multi-node simulations with optimized communication
+
+### ANSYS (CFD/FEA)
+- **Module**: `ansys`
+- **Environment**: Fluent-specific environment variables and licensing
+- **Applications**: Both Fluent (CFD) and Mechanical (FEA)
+- **Features**: HPC Pack license optimization, nodelist generation
+- **Usage**: Large-scale engineering simulations
+
+### COMSOL (Multiphysics)
+- **Module**: `comsol`
+- **Modes**: Single-node, multi-node MPI+OpenMP hybrid
+- **Environment**: Automatic MPI bootstrap configuration
+- **Features**: Supports both CPU and GPU acceleration
+- **Usage**: Finite element multiphysics simulations
 
 ## Supported Job Types
 
@@ -24,6 +58,7 @@ A comprehensive solution for generating Slurm batch scripts for NREL High Perfor
 - MPI jobs with multi-node configurations  
 - Memory-intensive jobs
 - Jobs with local scratch storage requirements
+- Application-specific optimized workflows
 
 ## 🚀 Quick Start
 
@@ -83,12 +118,70 @@ For users working directly on Kestrel, we provide a powerful CLI tool that gener
 
 ### CLI Usage Examples
 
+#### List Available Templates
+```bash
+python3 generate_job.py --list-templates
+```
+
 #### Interactive Mode (Recommended for Beginners)
 ```bash
 python3 generate_job.py --interactive
 ```
 
-#### Command Line Examples
+#### Application Template Examples
+
+**Gaussian job:**
+```bash
+python3 generate_job.py \
+  --template gaussian \
+  --account csc000 \
+  --time 02:00:00 \
+  --job-name benzene_calc \
+  --partition nvme \
+  --nodes 1
+```
+
+**LAMMPS multi-node job:**
+```bash
+python3 generate_job.py \
+  --template lammps \
+  --account csc000 \
+  --time 04:00:00 \
+  --job-name md_simulation \
+  --partition hbw \
+  --nodes 4 \
+  --ntasks 128 \
+  --ntasks-per-node 32
+```
+
+**ANSYS Fluent job:**
+```bash
+python3 generate_job.py \
+  --template ansys \
+  --account csc000 \
+  --time 06:00:00 \
+  --job-name cfd_analysis \
+  --partition standard \
+  --nodes 2 \
+  --ntasks 104 \
+  --ntasks-per-node 52
+```
+
+**COMSOL hybrid MPI+OpenMP:**
+```bash
+python3 generate_job.py \
+  --template comsol \
+  --account csc000 \
+  --time 08:00:00 \
+  --job-name multiphysics \
+  --partition standard \
+  --nodes 4 \
+  --ntasks 32 \
+  --ntasks-per-node 8 \
+  --cpus-per-task 13
+```
+
+#### General Command Line Examples
 
 **Basic job:**
 ```bash
@@ -136,6 +229,11 @@ python3 generate_job.py \
 ```
 
 ### CLI Command Reference
+
+#### Mode Selection
+- `--interactive, -i`: Run in interactive mode with guided prompts
+- `--list-templates`: Show all available application templates
+- `--template, --app`: Use application-specific template (gaussian, lammps, ansys, comsol, general)
 
 #### Required Parameters
 - `--account, -A`: Your NREL project account (e.g., `csc000`)

@@ -31,6 +31,70 @@ class JobScriptCLI:
         }
         
         self.qos_options = ['normal', 'high', 'standby']
+        
+        self.application_templates = {
+            'general': {
+                'name': 'General Template',
+                'description': 'Standard job script template for general HPC workloads',
+                'modules': [],
+                'environment': [],
+                'default_command': 'echo "Replace this with your command"',
+                'mpi_flags': [],
+                'recommended_partition': None,
+                'partition_reason': None
+            },
+            'gaussian': {
+                'name': 'Gaussian Template',
+                'description': 'Optimized for Gaussian16 quantum chemistry calculations',
+                'modules': ['gaussian'],
+                'environment': [
+                    'export GAUSS_SCRDIR=$TMPDIR',
+                    'export GAUSS_MEMDEF=2GB'
+                ],
+                'default_command': 'g16_nrel < input.gjf > output.log',
+                'mpi_flags': [],
+                'recommended_partition': 'nvme',
+                'partition_reason': 'I/O intensive calculations benefit from fast local storage'
+            },
+            'lammps': {
+                'name': 'LAMMPS Template',
+                'description': 'Configured for LAMMPS molecular dynamics simulations',
+                'modules': ['lammps/080223-intel-mpich'],
+                'environment': [],
+                'default_command': 'lmp -in input.in',
+                'mpi_flags': ['--mpi=pmi2'],
+                'recommended_partition': 'hbw',
+                'partition_reason': 'High-bandwidth partition recommended for >10 nodes'
+            },
+            'ansys': {
+                'name': 'ANSYS Template',
+                'description': 'Setup for ANSYS Fluent and Mechanical simulations',
+                'modules': ['ansys'],
+                'environment': [
+                    'export FLUENT_AFFINITY=0',
+                    'export SLURM_ENABLED=1',
+                    'export SCHEDULER_TIGHT_COUPLING=13',
+                    'export I_MPI_HYDRA_BOOTSTRAP=slurm',
+                    'scontrol show hostnames > nodelist'
+                ],
+                'default_command': 'fluent 3ddp -g -t$SLURM_NPROCS -mpi=intel -cnf=$PWD/nodelist -i journal.jou',
+                'mpi_flags': [],
+                'recommended_partition': None,
+                'partition_reason': None
+            },
+            'comsol': {
+                'name': 'COMSOL Template',
+                'description': 'Optimized for COMSOL Multiphysics finite element analysis',
+                'modules': ['comsol'],
+                'environment': [
+                    'export SLURM_MPI_TYPE=pmi2'
+                ],
+                'default_command': 'comsol batch -np $SLURM_NPROCS -inputfile input.mph -outputfile output',
+                'mpi_flags': [],
+                'recommended_partition': None,
+                'partition_reason': None
+            }
+        }
 
     def create_parser(self):
         parser = argparse.ArgumentParser(
@@ -48,6 +112,10 @@ Examples:
         # Mode selection
         parser.add_argument('--interactive', '-i', action='store_true',
                           help='Run in interactive mode')
+        
+        # Application template
+        parser.add_argument('--template', '--app', choices=list(self.application_templates.keys()),
+                          help='Application template: ' + ', '.join(self.application_templates.keys()))
         
         # Required parameters
         parser.add_argument('--account', '-A', type=str,
@@ -106,6 +174,8 @@ Examples:
                           help='Save script to file')
         parser.add_argument('--submit', action='store_true',
                           help='Submit job after generating script')
+        parser.add_argument('--list-templates', action='store_true',
+                          help='List available application templates')
         
         return parser
 
@@ -133,6 +203,21 @@ Examples:
         print("=== NREL HPC Job Script Generator ===")
         print("Interactive Mode - Press Enter for defaults\n")
         
+        # Application template selection
+        print("Available application templates:")
+        for key, template in self.application_templates.items():
+            print(f"  {key}: {template['description']}")
+        
+        app_template = input(f"Application template [{list(self.application_templates.keys())[0]}]: ").strip()
+        if not app_template or app_template not in self.application_templates:
+            app_template = 'general'
+        
+        template_config = self.application_templates[app_template]
+        print(f"\nUsing {template_config['name']}")
+        if template_config.get('recommended_partition'):
+            print(f"Recommended partition: {template_config['recommended_partition']} ({template_config['partition_reason']})")
+        print()
+        
         # Required parameters
         account = input("Account/Project handle (required): ").strip()
         while not account:
@@ -146,7 +231,8 @@ Examples:
         job_name = input("Job name [my_job]: ").strip() or "my_job"
         
         print(f"Partitions: {', '.join(self.partitions.keys())}")
-        partition = input("Partition [default]: ").strip()
+        default_partition = template_config.get('recommended_partition', 'standard')
+        partition = input(f"Partition [{default_partition}]: ").strip() or default_partition
         if partition and partition not in self.partitions:
             print(f"Warning: {partition} not in known partitions")
         
@@ -196,10 +282,17 @@ Examples:
         memory = input("Memory per node (e.g., 50GB) [optional]: ").strip() or None
         email = input("Email for notifications [optional]: ").strip() or None
         
-        modules = input("Modules to load (comma-separated) [optional]: ").strip()
+        # Show template modules
+        if template_config.get('modules'):
+            print(f"Template modules: {', '.join(template_config['modules'])}")
+        modules = input("Additional modules to load (comma-separated) [optional]: ").strip()
         modules = [m.strip() for m in modules.split(',')] if modules else []
         
-        commands = input("Job commands (comma-separated) [optional]: ").strip()
+        # Show default command for template
+        default_cmd = template_config.get('default_command', '')
+        if default_cmd:
+            print(f"Template default command: {default_cmd}")
+        commands = input("Job commands (comma-separated, or press Enter to use template default) [optional]: ").strip()
         commands = [c.strip() for c in commands.split(',')] if commands else []
         
         # Create args object
@@ -208,6 +301,7 @@ Examples:
         
         args = Args()
         args.interactive = True
+        args.template = app_template
         args.account = account
         args.time = walltime
         args.job_name = job_name
@@ -237,14 +331,19 @@ Examples:
         """Generate the job script"""
         lines = []
         
+        # Get application template
+        app_template = getattr(args, 'template', 'general') or 'general'
+        template_config = self.application_templates.get(app_template, self.application_templates['general'])
+        
         # Shebang
         lines.append('#!/bin/bash')
         lines.append('')
         
         # Header
-        lines.append('# NREL HPC Job Script')
+        lines.append(f'# NREL HPC Job Script - {template_config["name"]}')
         lines.append(f'# Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
         lines.append(f'# Job: {args.job_name or "my_job"}')
+        lines.append(f'# Application: {template_config["description"]}')
         lines.append('')
         
         # Required SBATCH directives
@@ -309,26 +408,37 @@ Examples:
             ''
         ])
         
-        # Module loading
+        # Module loading (combine template modules with user modules)
+        all_modules = template_config.get('modules', [])
         if args.modules:
+            all_modules.extend([m for m in args.modules if m])
+        
+        if all_modules:
             lines.append('# Load required modules')
-            for module in args.modules:
-                if module:
-                    lines.append(f'module load {module}')
+            for module in all_modules:
+                lines.append(f'module load {module}')
+            lines.append('module list')
+            lines.append('')
+        
+        # Environment setup (from template)
+        if template_config.get('environment'):
+            lines.append('# Environment setup')
+            for env_line in template_config['environment']:
+                lines.append(env_line)
             lines.append('')
         
         # Job commands
         lines.append('# Job execution')
         
         # Generate srun command if applicable
-        srun_cmd = self._generate_srun_command(args)
+        srun_cmd = self._generate_srun_command(args, template_config)
         
         if args.commands:
             if srun_cmd:
                 lines.append('# MPI/Parallel execution with srun')
             for command in args.commands:
                 if command:
-                    if srun_cmd and self._is_mpi_command(command):
+                    if srun_cmd and self._is_mpi_command(command, app_template):
                         lines.append(f'{srun_cmd} {command}')
                     else:
                         lines.append(command)
@@ -339,7 +449,7 @@ Examples:
                 with open(args.script_file, 'r') as f:
                     for line in f:
                         line = line.rstrip()
-                        if line and srun_cmd and self._is_mpi_command(line):
+                        if line and srun_cmd and self._is_mpi_command(line, app_template):
                             lines.append(f'{srun_cmd} {line}')
                         else:
                             lines.append(line)
@@ -347,21 +457,19 @@ Examples:
                 lines.append(f'# Script file {args.script_file} not found')
                 lines.append('echo "Script file not found"')
         else:
+            # Use template default command if no user commands provided
+            default_cmd = template_config.get('default_command', 'echo "Add your commands here"')
+            if srun_cmd and self._is_mpi_command(default_cmd, app_template):
+                lines.append(f'{srun_cmd} {default_cmd}')
+            else:
+                lines.append(default_cmd)
+            
             if srun_cmd:
                 lines.extend([
-                    '# MPI/Parallel job execution',
-                    f'# Use srun for MPI programs: {srun_cmd} your_mpi_program',
-                    '# For serial programs within the allocation: your_program',
                     '',
-                    '# Example MPI command:',
-                    f'# {srun_cmd} python your_parallel_script.py',
-                    '',
-                    'echo "Add your MPI/parallel job commands here"'
-                ])
-            else:
-                lines.extend([
-                    '# Add your job commands here',
-                    'echo "Replace this with your actual job commands"'
+                    '# MPI/Parallel job execution examples:',
+                    f'# {srun_cmd} your_mpi_program',
+                    '# For serial programs within the allocation: your_program'
                 ])
         
         lines.append('')
@@ -369,7 +477,7 @@ Examples:
         
         return '\n'.join(lines)
     
-    def _generate_srun_command(self, args):
+    def _generate_srun_command(self, args, template_config=None):
         """Generate srun command with appropriate parameters"""
         nodes = args.nodes
         ntasks = args.ntasks
@@ -384,6 +492,10 @@ Examples:
             
             srun_parts = ['srun']
             
+            # Add template-specific MPI flags
+            if template_config and template_config.get('mpi_flags'):
+                srun_parts.extend(template_config['mpi_flags'])
+            
             # Add explicit parameters to srun
             if ntasks:
                 srun_parts.append(f'--ntasks={ntasks}')
@@ -396,12 +508,25 @@ Examples:
         
         return None
     
-    def _is_mpi_command(self, command):
+    def _is_mpi_command(self, command, app_template='general'):
         """Check if a command appears to be an MPI/parallel program"""
-        # Commands that typically benefit from srun
-        mpi_indicators = ['python', 'mpirun', 'mpiexec', './', 'vasp', 'lammps', 'openfoam']
+        # Application-specific MPI command detection
+        app_mpi_indicators = {
+            'general': ['python', 'mpirun', 'mpiexec', './', 'vasp', 'openfoam'],
+            'gaussian': ['g16', 'g09'],  # Gaussian handles parallelization internally
+            'lammps': ['lmp'],
+            'ansys': ['fluent', 'ansys'],
+            'comsol': ['comsol']
+        }
+        
+        indicators = app_mpi_indicators.get(app_template, app_mpi_indicators['general'])
         cmd_lower = command.lower()
-        return any(indicator in cmd_lower for indicator in mpi_indicators)
+        
+        # Special case: Gaussian uses g16_nrel which doesn't need srun
+        if app_template == 'gaussian' and 'g16_nrel' in cmd_lower:
+            return False
+            
+        return any(indicator in cmd_lower for indicator in indicators)
 
     def run(self):
         """Main CLI entry point"""
@@ -413,6 +538,19 @@ Examples:
             return 1
         
         args = parser.parse_args()
+        
+        # List templates
+        if args.list_templates:
+            print("Available Application Templates:")
+            print("=" * 50)
+            for key, template in self.application_templates.items():
+                print(f"{key:12} - {template['description']}")
+                if template.get('modules'):
+                    print(f"{'':12}   Modules: {', '.join(template['modules'])}")
+                if template.get('recommended_partition'):
+                    print(f"{'':12}   Recommended partition: {template['recommended_partition']}")
+                print()
+            return 0
         
         # Interactive mode
         if args.interactive:

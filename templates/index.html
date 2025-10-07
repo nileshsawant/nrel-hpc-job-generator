@@ -12,6 +12,28 @@
         </div>
 
         <form id="jobForm">
+            <!-- Application Template Selection -->
+            <div class="form-section">
+                <h4>Application Template</h4>
+                
+                <div class="mb-3">
+                    <label for="application_template" class="form-label">Application Type</label>
+                    <select class="form-select" id="application_template" name="application_template" onchange="updateTemplateInfo()">
+                        {% for template_key, template_info in application_templates.items() %}
+                        <option value="{{ template_key }}" {% if template_key == 'general' %}selected{% endif %}>
+                            {{ template_info.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text" id="templateDescription">{{ application_templates.general.description }}</div>
+                </div>
+                
+                <div id="templateInfo" class="alert alert-info" style="display: none;">
+                    <div id="templateModules"></div>
+                    <div id="templateRecommendation"></div>
+                </div>
+            </div>
+
             <!-- Required Parameters -->
             <div class="form-section">
                 <h4>Required Parameters</h4>
@@ -251,9 +273,64 @@
 {% block scripts %}
 <script>
 let currentScript = '';
+const applicationTemplates = {{ application_templates | tojson }};
 
 document.getElementById('generateBtn').addEventListener('click', generateScript);
 document.getElementById('downloadBtn').addEventListener('click', downloadScript);
+
+function updateTemplateInfo() {
+    const templateSelect = document.getElementById('application_template');
+    const selectedTemplate = templateSelect.value;
+    const templateInfo = applicationTemplates[selectedTemplate];
+    
+    // Update description
+    document.getElementById('templateDescription').textContent = templateInfo.description;
+    
+    // Update info panel
+    const infoPanel = document.getElementById('templateInfo');
+    const modulesDiv = document.getElementById('templateModules');
+    const recommendationDiv = document.getElementById('templateRecommendation');
+    
+    let hasInfo = false;
+    
+    // Show modules if any
+    if (templateInfo.modules && templateInfo.modules.length > 0) {
+        modulesDiv.innerHTML = '<strong>Modules:</strong> ' + templateInfo.modules.join(', ');
+        hasInfo = true;
+    } else {
+        modulesDiv.innerHTML = '';
+    }
+    
+    // Show partition recommendation if any
+    if (templateInfo.recommended_partition) {
+        recommendationDiv.innerHTML = '<strong>Recommended partition:</strong> ' + 
+            templateInfo.recommended_partition + ' (' + templateInfo.partition_reason + ')';
+        
+        // Auto-select recommended partition
+        const partitionSelect = document.getElementById('partition');
+        if (partitionSelect) {
+            partitionSelect.value = templateInfo.recommended_partition;
+        }
+        hasInfo = true;
+    } else {
+        recommendationDiv.innerHTML = '';
+    }
+    
+    // Show/hide info panel
+    if (hasInfo) {
+        infoPanel.style.display = 'block';
+    } else {
+        infoPanel.style.display = 'none';
+    }
+    
+    // Auto-generate script with new template
+    generateScript();
+}
+
+// Initialize template info on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateTemplateInfo();
+});
 
 function generateScript() {
     const form = document.getElementById('jobForm');

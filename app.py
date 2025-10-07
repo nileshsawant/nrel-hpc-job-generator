@@ -31,6 +31,70 @@ class JobScriptGenerator:
             'high': {'multiplier': 2.0, 'description': 'High priority (2x AU cost)'},
             'standby': {'multiplier': 0.0, 'description': 'Standby (free, runs when idle)'}
         }
+        
+        self.application_templates = {
+            'general': {
+                'name': 'General Template',
+                'description': 'Standard job script template for general HPC workloads',
+                'modules': [],
+                'environment': [],
+                'default_command': 'echo "Replace this with your command"',
+                'mpi_flags': [],
+                'recommended_partition': None,
+                'partition_reason': None
+            },
+            'gaussian': {
+                'name': 'Gaussian Template',
+                'description': 'Optimized for Gaussian16 quantum chemistry calculations',
+                'modules': ['gaussian'],
+                'environment': [
+                    'export GAUSS_SCRDIR=$TMPDIR',
+                    'export GAUSS_MEMDEF=2GB'
+                ],
+                'default_command': 'g16_nrel < input.gjf > output.log',
+                'mpi_flags': [],
+                'recommended_partition': 'nvme',
+                'partition_reason': 'I/O intensive calculations benefit from fast local storage'
+            },
+            'lammps': {
+                'name': 'LAMMPS Template',
+                'description': 'Configured for LAMMPS molecular dynamics simulations',
+                'modules': ['lammps/080223-intel-mpich'],
+                'environment': [],
+                'default_command': 'lmp -in input.in',
+                'mpi_flags': ['--mpi=pmi2'],
+                'recommended_partition': 'hbw',
+                'partition_reason': 'High-bandwidth partition recommended for >10 nodes'
+            },
+            'ansys': {
+                'name': 'ANSYS Template',
+                'description': 'Setup for ANSYS Fluent and Mechanical simulations',
+                'modules': ['ansys'],
+                'environment': [
+                    'export FLUENT_AFFINITY=0',
+                    'export SLURM_ENABLED=1',
+                    'export SCHEDULER_TIGHT_COUPLING=13',
+                    'export I_MPI_HYDRA_BOOTSTRAP=slurm',
+                    'scontrol show hostnames > nodelist'
+                ],
+                'default_command': 'fluent 3ddp -g -t$SLURM_NPROCS -mpi=intel -cnf=$PWD/nodelist -i journal.jou',
+                'mpi_flags': [],
+                'recommended_partition': None,
+                'partition_reason': None
+            },
+            'comsol': {
+                'name': 'COMSOL Template',
+                'description': 'Optimized for COMSOL Multiphysics finite element analysis',
+                'modules': ['comsol'],
+                'environment': [
+                    'export SLURM_MPI_TYPE=pmi2'
+                ],
+                'default_command': 'comsol batch -np $SLURM_NPROCS -inputfile input.mph -outputfile output',
+                'mpi_flags': [],
+                'recommended_partition': None,
+                'partition_reason': None
+            }
+        }
     
     def validate_inputs(self, data):
         """Validate user inputs"""
@@ -69,14 +133,19 @@ class JobScriptGenerator:
         """Generate the sbatch script"""
         script_lines = []
         
+        # Get application template
+        app_template = data.get('application_template', 'general')
+        template_config = self.application_templates.get(app_template, self.application_templates['general'])
+        
         # Shebang
         script_lines.append('#!/bin/bash')
         script_lines.append('')
         
         # Header comment
-        script_lines.append(f'# NREL HPC Job Script')
+        script_lines.append(f'# NREL HPC Job Script - {template_config["name"]}')
         script_lines.append(f'# Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
         script_lines.append(f'# Job: {data.get("job_name", "my_job")}')
+        script_lines.append(f'# Application: {template_config["description"]}')
         script_lines.append('')
         
         # Required SBATCH directives
@@ -155,29 +224,36 @@ class JobScriptGenerator:
             ''
         ])
         
-        # Module loading
+        # Module loading (combine template modules with user modules)
+        all_modules = template_config.get('modules', [])
         if data.get('modules'):
+            user_modules = [m.strip() for m in data.get('modules', '').split('\n') if m.strip()]
+            all_modules.extend(user_modules)
+        
+        if all_modules:
             script_lines.append('# Load required modules')
-            for module in data.get('modules', '').split('\n'):
-                module = module.strip()
-                if module:
-                    script_lines.append(f'module load {module}')
+            for module in all_modules:
+                script_lines.append(f'module load {module}')
+            script_lines.append('module list')
             script_lines.append('')
         
-        # Environment setup
+        # Environment setup (combine template environment with user setup)
+        all_env = template_config.get('environment', [])
         if data.get('environment_setup'):
+            user_env = [line.strip() for line in data.get('environment_setup', '').split('\n') if line.strip()]
+            all_env.extend(user_env)
+        
+        if all_env:
             script_lines.append('# Environment setup')
-            for line in data.get('environment_setup', '').split('\n'):
-                line = line.strip()
-                if line:
-                    script_lines.append(line)
+            for line in all_env:
+                script_lines.append(line)
             script_lines.append('')
         
         # Job commands
         script_lines.append('# Job execution')
         
         # Generate srun command if applicable
-        srun_cmd = self._generate_srun_command(data)
+        srun_cmd = self._generate_srun_command(data, template_config)
         
         if data.get('commands'):
             if srun_cmd:
@@ -185,26 +261,24 @@ class JobScriptGenerator:
             for line in data.get('commands', '').split('\n'):
                 line = line.strip()
                 if line:
-                    if srun_cmd and self._is_mpi_command(line):
+                    if srun_cmd and self._is_mpi_command(line, app_template):
                         script_lines.append(f'{srun_cmd} {line}')
                     else:
                         script_lines.append(line)
         else:
+            # Use template default command if no user commands provided
+            default_cmd = template_config.get('default_command', 'echo "Add your commands here"')
+            if srun_cmd and self._is_mpi_command(default_cmd, app_template):
+                script_lines.append(f'{srun_cmd} {default_cmd}')
+            else:
+                script_lines.append(default_cmd)
+            
             if srun_cmd:
                 script_lines.extend([
-                    '# MPI/Parallel job execution',
-                    f'# Use srun for MPI programs: {srun_cmd} your_mpi_program',
-                    '# For serial programs within the allocation: your_program',
                     '',
-                    '# Example MPI command:',
-                    f'# {srun_cmd} python your_parallel_script.py',
-                    '',
-                    'echo "Add your MPI/parallel job commands here"'
-                ])
-            else:
-                script_lines.extend([
-                    '# Add your job commands here',
-                    'echo "Replace this with your actual job commands"'
+                    '# MPI/Parallel job execution examples:',
+                    f'# {srun_cmd} your_mpi_program',
+                    '# For serial programs within the allocation: your_program'
                 ])
         
         script_lines.append('')
@@ -212,7 +286,7 @@ class JobScriptGenerator:
         
         return '\n'.join(script_lines)
     
-    def _generate_srun_command(self, data):
+    def _generate_srun_command(self, data, template_config=None):
         """Generate srun command with appropriate parameters"""
         nodes = int(data.get('nodes', 1))
         ntasks = data.get('ntasks')
@@ -227,6 +301,10 @@ class JobScriptGenerator:
             
             srun_parts = ['srun']
             
+            # Add template-specific MPI flags
+            if template_config and template_config.get('mpi_flags'):
+                srun_parts.extend(template_config['mpi_flags'])
+            
             # Add explicit parameters to srun
             if ntasks:
                 srun_parts.append(f'--ntasks={ntasks}')
@@ -239,12 +317,25 @@ class JobScriptGenerator:
         
         return None
     
-    def _is_mpi_command(self, command):
+    def _is_mpi_command(self, command, app_template='general'):
         """Check if a command appears to be an MPI/parallel program"""
-        # Commands that typically benefit from srun
-        mpi_indicators = ['python', 'mpirun', 'mpiexec', './', 'vasp', 'lammps', 'openfoam']
+        # Application-specific MPI command detection
+        app_mpi_indicators = {
+            'general': ['python', 'mpirun', 'mpiexec', './', 'vasp', 'openfoam'],
+            'gaussian': ['g16', 'g09'],  # Gaussian handles parallelization internally
+            'lammps': ['lmp'],
+            'ansys': ['fluent', 'ansys'],
+            'comsol': ['comsol']
+        }
+        
+        indicators = app_mpi_indicators.get(app_template, app_mpi_indicators['general'])
         cmd_lower = command.lower()
-        return any(indicator in cmd_lower for indicator in mpi_indicators)
+        
+        # Special case: Gaussian uses g16_nrel which doesn't need srun
+        if app_template == 'gaussian' and 'g16_nrel' in cmd_lower:
+            return False
+            
+        return any(indicator in cmd_lower for indicator in indicators)
 
 generator = JobScriptGenerator()
 
@@ -253,7 +344,8 @@ def index():
     """Main page with job script form"""
     return render_template('index.html', 
                          partitions=generator.partitions,
-                         qos_options=generator.qos_options)
+                         qos_options=generator.qos_options,
+                         application_templates=generator.application_templates)
 
 @app.route('/generate', methods=['POST'])
 def generate():
@@ -293,6 +385,15 @@ def download():
     except Exception as e:
         return jsonify({'success': False, 'errors': [str(e)]}), 500
 
+@app.route('/templates/<template_name>')
+def get_template(template_name):
+    """Get application template configuration"""
+    template = generator.application_templates.get(template_name)
+    if template:
+        return jsonify({'success': True, 'template': template})
+    else:
+        return jsonify({'success': False, 'error': 'Template not found'}), 404
+
 @app.route('/examples')
 def examples():
     """Show example job scripts"""
@@ -310,32 +411,61 @@ def examples():
                 'commands': 'echo "Hello from Kestrel!"\necho "Node: $SLURMD_NODENAME"'
             })
         },
-        'gpu_job': {
-            'name': 'GPU Job',
-            'description': 'Job requesting GPU resources',
-            'script': generator.generate_script({
-                'account': 'your_project',
-                'walltime': '01:00:00',
-                'job_name': 'gpu_job',
-                'partition': 'standard',
-                'nodes': '1',
-                'gpus': '1',
-                'commands': 'nvidia-smi\necho "GPU job running on $SLURMD_NODENAME"'
-            })
-        },
-        'mpi_job': {
-            'name': 'MPI Job',
-            'description': 'Multi-node MPI job',
+        'gaussian_example': {
+            'name': 'Gaussian Job',
+            'description': 'Gaussian16 quantum chemistry calculation',
             'script': generator.generate_script({
                 'account': 'your_project',
                 'walltime': '02:00:00',
-                'job_name': 'mpi_job',
+                'job_name': 'gaussian_job',
+                'partition': 'nvme',
+                'nodes': '1',
+                'ntasks': '1',
+                'application_template': 'gaussian',
+                'commands': 'g16_nrel < benzene.gjf > benzene.log'
+            })
+        },
+        'lammps_example': {
+            'name': 'LAMMPS Job',
+            'description': 'LAMMPS molecular dynamics simulation',
+            'script': generator.generate_script({
+                'account': 'your_project',
+                'walltime': '04:00:00',
+                'job_name': 'lammps_job',
+                'partition': 'standard',
+                'nodes': '2',
+                'ntasks': '64',
+                'ntasks_per_node': '32',
+                'application_template': 'lammps'
+            })
+        },
+        'ansys_example': {
+            'name': 'ANSYS Fluent Job',
+            'description': 'ANSYS Fluent CFD simulation',
+            'script': generator.generate_script({
+                'account': 'your_project',
+                'walltime': '06:00:00',
+                'job_name': 'fluent_job',
+                'partition': 'standard',
+                'nodes': '2',
+                'ntasks': '104',
+                'ntasks_per_node': '52',
+                'application_template': 'ansys'
+            })
+        },
+        'comsol_example': {
+            'name': 'COMSOL Job',
+            'description': 'COMSOL Multiphysics simulation',
+            'script': generator.generate_script({
+                'account': 'your_project',
+                'walltime': '08:00:00',
+                'job_name': 'comsol_job',
                 'partition': 'standard',
                 'nodes': '4',
-                'ntasks': '128',
-                'ntasks_per_node': '32',
-                'modules': 'gcc\nopenmpi',
-                'commands': 'mpirun ./my_mpi_program'
+                'ntasks': '32',
+                'ntasks_per_node': '8',
+                'cpus_per_task': '13',
+                'application_template': 'comsol'
             })
         }
     }
