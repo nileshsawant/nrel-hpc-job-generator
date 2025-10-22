@@ -330,13 +330,13 @@ done
 
 ## 🌐 Web Interface Options
 
-### For NREL Users (Policy Compliant)
+### For NREL Users
 
 **Option 1: Standalone HTML File** ⭐ **RECOMMENDED**
 1. Download `standalone.html` from this repository
 2. Open the file in any web browser (Chrome, Firefox, Safari)
 3. Generate job scripts entirely offline - no external servers needed!
-4. **Benefits:** NREL policy compliant, works offline, no data transmission
+4. **Benefits:** Works offline, no data transmission
 
 **Option 2: Local Web Server**
 1. Follow the "For Developers" installation steps above
