@@ -2,6 +2,11 @@
 
 A comprehensive solution for generating Slurm batch scripts for NREL High Performance Computing systems, specifically designed for the Kestrel supercomputer.
 
+1. Download `standalone.html` from this repository
+2. Open the file in any web browser (Chrome, Firefox, Safari)
+3. Generate job scripts entirely offline - no external servers needed!
+4. **Benefits:** Works offline, no data transmission
+
 ## 🎯 Multiple Access Methods
 
 - **🌐 Web Interface**: User-friendly browser-based generator
